@@ -1,0 +1,135 @@
+{
+  "_args": [
+    [
+      {
+        "raw": "@cycle/run@3.1.0",
+        "scope": "@cycle",
+        "escapedName": "@cycle%2frun",
+        "name": "@cycle/run",
+        "rawSpec": "3.1.0",
+        "spec": "3.1.0",
+        "type": "version"
+      },
+      "/Users/staltz/oss/cyclejs/examples/hello-lastname"
+    ]
+  ],
+  "_from": "@cycle/run@3.1.0",
+  "_id": "@cycle/run@3.1.0",
+  "_inCache": true,
+  "_location": "/@cycle/run",
+  "_nodeVersion": "6.9.1",
+  "_npmOperationalInternal": {
+    "host": "packages-18-east.internal.npmjs.com",
+    "tmp": "tmp/run-3.1.0.tgz_1490361354243_0.21286654495634139"
+  },
+  "_npmUser": {
+    "name": "cycle",
+    "email": "andre+npmcycle@staltz.com"
+  },
+  "_npmVersion": "3.10.8",
+  "_phantomChildren": {},
+  "_requested": {
+    "raw": "@cycle/run@3.1.0",
+    "scope": "@cycle",
+    "escapedName": "@cycle%2frun",
+    "name": "@cycle/run",
+    "rawSpec": "3.1.0",
+    "spec": "3.1.0",
+    "type": "version"
+  },
+  "_requiredBy": [
+    "/",
+    "/@cycle/dom"
+  ],
+  "_resolved": "https://registry.npmjs.org/@cycle/run/-/run-3.1.0.tgz",
+  "_shasum": "76df582a501d2d1b871f8f6decf263afae090384",
+  "_shrinkwrap": null,
+  "_spec": "@cycle/run@3.1.0",
+  "_where": "/Users/staltz/oss/cyclejs/examples/hello-lastname",
+  "browserify-shim": {
+    "xstream": "global:xstream"
+  },
+  "bugs": {
+    "url": "https://github.com/cyclejs/cyclejs/issues"
+  },
+  "contributors": [
+    {
+      "name": "Andre Staltz",
+      "email": "andre@staltz.com"
+    },
+    {
+      "name": "Tylor Steinberger",
+      "email": "tlsteinberger167@gmail.com"
+    }
+  ],
+  "dependencies": {
+    "xstream": "10.x"
+  },
+  "description": "The Cycle.js run() function to use with xstream",
+  "devDependencies": {
+    "@types/es6-promise": "0.0.x",
+    "@types/mocha": "2.2.x",
+    "@types/node": "7.0.x",
+    "@types/sinon": "1.16.x"
+  },
+  "directories": {},
+  "dist": {
+    "shasum": "76df582a501d2d1b871f8f6decf263afae090384",
+    "tarball": "https://registry.npmjs.org/@cycle/run/-/run-3.1.0.tgz"
+  },
+  "engines": {
+    "node": ">=0.12.0"
+  },
+  "homepage": "https://cycle.js.org",
+  "keywords": [
+    "reactive",
+    "framework",
+    "rxjs",
+    "rx",
+    "unidirectional",
+    "mvi",
+    "virtual-dom"
+  ],
+  "license": "MIT",
+  "main": "lib/index.js",
+  "maintainers": [
+    {
+      "name": "cycle",
+      "email": "andre+npmcycle@staltz.com"
+    }
+  ],
+  "name": "@cycle/run",
+  "optionalDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  },
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cyclejs/cyclejs/tree/master/run"
+  },
+  "scripts": {
+    "browserify": "../node_modules/.bin/browserify lib/index.js --global-transform=browserify-shim --standalone Cycle --exclude xstream -o dist/cycle-run.js",
+    "changelog": "node ../.scripts/update-changelogs.js ${PWD##*/}",
+    "dist": "npm run lib && npm run browserify && npm run uglify",
+    "docs": "node ../.scripts/make-api-docs.js ${PWD##*/}",
+    "lib": "../node_modules/.bin/tsc",
+    "lint": "../node_modules/.bin/tslint --config ../tslint.json --project tsconfig.json",
+    "mocha": "../node_modules/.bin/mocha test/*.ts --require ts-node/register",
+    "postversion": "git add -A && git commit -m \"release(${PWD##*/}): v$(cat package.json | ../node_modules/.bin/jase version)\" && git push origin master && npm publish",
+    "predist": "rm -rf dist/ && mkdir -p dist/",
+    "prelib": "rm -rf lib/ && mkdir -p lib/",
+    "premocha": "npm run lib",
+    "preversion": "npm test",
+    "release-major": "npm --no-git-tag-version version major",
+    "release-minor": "npm --no-git-tag-version version minor",
+    "release-patch": "false",
+    "test": "npm run lint && npm run mocha",
+    "test-ci": "npm run test",
+    "uglify": "../node_modules/.bin/uglifyjs dist/cycle-run.js -o dist/cycle-run.min.js",
+    "version": "npm run dist && npm run docs && npm run changelog"
+  },
+  "types": "lib/index.d.ts",
+  "typings": "lib/index.d.ts",
+  "version": "3.1.0"
+}
