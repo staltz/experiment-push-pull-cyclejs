@@ -1,5 +1,5 @@
-import {Stream} from '../../xs';
-import {Signal} from '../../ys';
+import {Stream} from 'xstream';
+import {Signal} from 'ysignal';
 export interface EventsFnOptions {
   useCapture?: boolean;
 }

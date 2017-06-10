@@ -1,2 +1,13 @@
+.vscode
+.DS_Store
 lib
 node_modules
+
+/@cycle/dom/lib
+/@cycle/run/lib
+/xstream/index.d.ts
+/xstream/index.js
+/xstream/index.js.map
+/ysignal/index.d.ts
+/ysignal/index.js
+/ysignal/index.js.map

@@ -76,9 +76,6 @@
   "devDependencies": {
     "@cycle/isolate": "1.x",
     "@cycle/rxjs-run": "4.0.0-rc.3",
-    "@types/mocha": "^2.2.33",
-    "@types/node": "^7.0.4",
-    "@types/sinon": "^1.16.32",
     "rxjs": "5.1.0",
     "saucie": "3.1.0",
     "simulant": "^0.2.2",
@@ -133,7 +130,7 @@
     "browserify": "../node_modules/.bin/browserify lib/index.js --global-transform=browserify-shim --standalone CycleDOM --exclude xstream --outfile dist/cycle-dom.js",
     "changelog": "node ../.scripts/update-changelogs.js ${PWD##*/}",
     "dist": "npm run lib && npm run browserify && npm run uglify",
-    "lib": "../node_modules/.bin/tsc",
+    "lib": "../../node_modules/.bin/tsc",
     "lint": "../node_modules/.bin/tslint -c ../tslint.json ./src/*.ts ./src/**/*.ts",
     "posttest-browser": "rm test/browser/page/tests-bundle.js",
     "posttest-browser-ci": "npm run posttest-browser",

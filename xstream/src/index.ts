@@ -1,4 +1,3 @@
-import {Signal} from './ys';
 import $$observable from 'symbol-observable';
 
 const NO = {};
@@ -13,7 +12,10 @@ function copy<T>(a: Array<T>): Array<T> {
   return b;
 }
 
-function and<T>(f1: (t: T) => boolean, f2: (t: T) => boolean): (t: T) => boolean {
+function and<T>(
+  f1: (t: T) => boolean,
+  f2: (t: T) => boolean,
+): (t: T) => boolean {
   return function andFn(t: T): boolean {
     return f1(t) && f2(t);
   };
@@ -53,7 +55,9 @@ export interface OutSender<T> {
   out: Stream<T>;
 }
 
-export interface Operator<T, R> extends InternalProducer<R>, InternalListener<T>, OutSender<R> {
+export interface Operator<T, R> extends InternalProducer<R>, InternalListener<
+  T
+>, OutSender<R> {
   type: string;
   ins: Stream<T>;
   _start: (out: Stream<R>) => void;
@@ -85,8 +89,12 @@ export interface Observable<T> {
 }
 
 // mutates the input
-function internalizeProducer<T>(producer: Producer<T> & Partial<InternalProducer<T>>) {
-  producer._start = function _start(il: InternalListener<T> & Partial<Listener<T>>) {
+function internalizeProducer<T>(
+  producer: Producer<T> & Partial<InternalProducer<T>>,
+) {
+  producer._start = function _start(
+    il: InternalListener<T> & Partial<Listener<T>>,
+  ) {
     il.next = il._n;
     il.error = il._e;
     il.complete = il._c;
@@ -147,69 +155,45 @@ class FromObservable<T> implements InternalProducer<T> {
 export interface MergeSignature {
   (): Stream<any>;
   <T1>(s1: Stream<T1>): Stream<T1>;
-  <T1, T2>(
-    s1: Stream<T1>,
-    s2: Stream<T2>): Stream<T1 | T2>;
-  <T1, T2, T3>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>): Stream<T1 | T2 | T3>;
-  <T1, T2, T3, T4>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>): Stream<T1 | T2 | T3 | T4>;
-  <T1, T2, T3, T4, T5>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>): Stream<T1 | T2 | T3 | T4 | T5>;
-  <T1, T2, T3, T4, T5, T6>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>): Stream<T1 | T2 | T3 | T4 | T5 | T6>;
-  <T1, T2, T3, T4, T5, T6, T7>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>): Stream<T1 | T2 | T3 | T4 | T5 | T6 | T7>;
-  <T1, T2, T3, T4, T5, T6, T7, T8>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>,
-    s8: Stream<T8>): Stream<T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8>;
-  <T1, T2, T3, T4, T5, T6, T7, T8, T9>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>,
-    s8: Stream<T8>,
-    s9: Stream<T9>): Stream<T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9>;
-  <T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>,
-    s8: Stream<T8>,
-    s9: Stream<T9>,
-    s10: Stream<T10>): Stream<T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9 | T10>;
+  <T1, T2>(s1: Stream<T1>, s2: Stream<T2>): Stream<T1 | T2>;
+  <T1, T2, T3>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<T3>): Stream<
+    T1 | T2 | T3
+  >;
+  <T1, T2, T3, T4>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<T3>, s4: Stream<
+    T4
+  >): Stream<T1 | T2 | T3 | T4>;
+  <T1, T2, T3, T4, T5>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>): Stream<T1 | T2 | T3 | T4 | T5>;
+  <T1, T2, T3, T4, T5, T6>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>): Stream<
+    T1 | T2 | T3 | T4 | T5 | T6
+  >;
+  <T1, T2, T3, T4, T5, T6, T7>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<T7>): Stream<
+    T1 | T2 | T3 | T4 | T5 | T6 | T7
+  >;
+  <T1, T2, T3, T4, T5, T6, T7, T8>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<T7>, s8: Stream<
+    T8
+  >): Stream<T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8>;
+  <T1, T2, T3, T4, T5, T6, T7, T8, T9>(s1: Stream<T1>, s2: Stream<
+    T2
+  >, s3: Stream<T3>, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<
+    T7
+  >, s8: Stream<T8>, s9: Stream<T9>): Stream<
+    T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9
+  >;
+  <T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(s1: Stream<T1>, s2: Stream<
+    T2
+  >, s3: Stream<T3>, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<
+    T7
+  >, s8: Stream<T8>, s9: Stream<T9>, s10: Stream<T10>): Stream<
+    T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9 | T10
+  >;
   <T>(...stream: Array<Stream<T>>): Stream<T>;
 }
 
@@ -268,69 +252,45 @@ class Merge<T> implements Aggregator<T, T>, InternalListener<T> {
 export interface CombineSignature {
   (): Stream<Array<any>>;
   <T1>(s1: Stream<T1>): Stream<[T1]>;
-  <T1, T2>(
-    s1: Stream<T1>,
-    s2: Stream<T2>): Stream<[T1, T2]>;
-  <T1, T2, T3>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>): Stream<[T1, T2, T3]>;
-  <T1, T2, T3, T4>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>): Stream<[T1, T2, T3, T4]>;
-  <T1, T2, T3, T4, T5>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>): Stream<[T1, T2, T3, T4, T5]>;
-  <T1, T2, T3, T4, T5, T6>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>): Stream<[T1, T2, T3, T4, T5, T6]>;
-  <T1, T2, T3, T4, T5, T6, T7>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>): Stream<[T1, T2, T3, T4, T5, T6, T7]>;
-  <T1, T2, T3, T4, T5, T6, T7, T8>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>,
-    s8: Stream<T8>): Stream<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-  <T1, T2, T3, T4, T5, T6, T7, T8, T9>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>,
-    s8: Stream<T8>,
-    s9: Stream<T9>): Stream<[T1, T2, T3, T4, T5, T6, T7, T8, T9]>;
-  <T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
-    s1: Stream<T1>,
-    s2: Stream<T2>,
-    s3: Stream<T3>,
-    s4: Stream<T4>,
-    s5: Stream<T5>,
-    s6: Stream<T6>,
-    s7: Stream<T7>,
-    s8: Stream<T8>,
-    s9: Stream<T9>,
-    s10: Stream<T10>): Stream<[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]>;
+  <T1, T2>(s1: Stream<T1>, s2: Stream<T2>): Stream<[T1, T2]>;
+  <T1, T2, T3>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<T3>): Stream<
+    [T1, T2, T3]
+  >;
+  <T1, T2, T3, T4>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<T3>, s4: Stream<
+    T4
+  >): Stream<[T1, T2, T3, T4]>;
+  <T1, T2, T3, T4, T5>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>): Stream<[T1, T2, T3, T4, T5]>;
+  <T1, T2, T3, T4, T5, T6>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>): Stream<
+    [T1, T2, T3, T4, T5, T6]
+  >;
+  <T1, T2, T3, T4, T5, T6, T7>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<T7>): Stream<
+    [T1, T2, T3, T4, T5, T6, T7]
+  >;
+  <T1, T2, T3, T4, T5, T6, T7, T8>(s1: Stream<T1>, s2: Stream<T2>, s3: Stream<
+    T3
+  >, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<T7>, s8: Stream<
+    T8
+  >): Stream<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+  <T1, T2, T3, T4, T5, T6, T7, T8, T9>(s1: Stream<T1>, s2: Stream<
+    T2
+  >, s3: Stream<T3>, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<
+    T7
+  >, s8: Stream<T8>, s9: Stream<T9>): Stream<
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9]
+  >;
+  <T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(s1: Stream<T1>, s2: Stream<
+    T2
+  >, s3: Stream<T3>, s4: Stream<T4>, s5: Stream<T5>, s6: Stream<T6>, s7: Stream<
+    T7
+  >, s8: Stream<T8>, s9: Stream<T9>, s10: Stream<T10>): Stream<
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]
+  >;
   (...stream: Array<Stream<any>>): Stream<Array<any>>;
 }
 
@@ -347,7 +307,8 @@ class CombineListener<T> implements InternalListener<T>, OutSender<Array<T>> {
   }
 
   _n(t: T): void {
-    const p = this.p, out = this.out;
+    const p = this.p,
+      out = this.out;
     if (out === NO) return;
     if (p.up(t, this.i)) {
       out._n(p.vals);
@@ -396,8 +357,8 @@ class Combine<R> implements Aggregator<any, Array<R>> {
   _start(out: Stream<Array<R>>): void {
     this.out = out;
     const s = this.insArr;
-    const n = this.Nc = this.Nn = s.length;
-    const vals = this.vals = new Array(n);
+    const n = (this.Nc = this.Nn = s.length);
+    const vals = (this.vals = new Array(n));
     if (n === 0) {
       out._n([]);
       out._c();
@@ -438,8 +399,7 @@ class FromArray<T> implements InternalProducer<T> {
     out._c();
   }
 
-  _stop(): void {
-  }
+  _stop(): void {}
 }
 
 class FromPromise<T> implements InternalProducer<T> {
@@ -455,19 +415,23 @@ class FromPromise<T> implements InternalProducer<T> {
   _start(out: InternalListener<T>): void {
     const prod = this;
     this.on = true;
-    this.p.then(
-      (v: T) => {
-        if (prod.on) {
-          out._n(v);
-          out._c();
-        }
-      },
-      (e: any) => {
-        out._e(e);
-      }
-    ).then(noop, (err: any) => {
-      setTimeout(() => { throw err; });
-    });
+    this.p
+      .then(
+        (v: T) => {
+          if (prod.on) {
+            out._n(v);
+            out._c();
+          }
+        },
+        (e: any) => {
+          out._e(e);
+        },
+      )
+      .then(noop, (err: any) => {
+        setTimeout(() => {
+          throw err;
+        });
+      });
   }
 
   _stop(): void {
@@ -489,7 +453,9 @@ class Periodic implements InternalProducer<number> {
 
   _start(out: InternalListener<number>): void {
     const self = this;
-    function intervalHandler() { out._n(self.i++); }
+    function intervalHandler() {
+      out._n(self.i++);
+    }
     this.intervalID = setInterval(intervalHandler, this.period);
   }
 
@@ -536,7 +502,8 @@ class Debug<T> implements Operator<T, T> {
   _n(t: T) {
     const u = this.out;
     if (u === NO) return;
-    const s = this.s, l = this.l;
+    const s = this.s,
+      l = this.l;
     if (s !== noop) {
       try {
         s(t);
@@ -646,7 +613,7 @@ class EndWhen<T> implements Operator<T, T> {
 
   _start(out: Stream<T>): void {
     this.out = out;
-    this.o._add(this.oil = new EndWhenListener(out, this));
+    this.o._add((this.oil = new EndWhenListener(out, this)));
     this.ins._add(this);
   }
 
@@ -790,7 +757,7 @@ class Flatten<T> implements Operator<Stream<T>, T> {
     if (u === NO) return;
     const {inner, il} = this;
     if (inner !== NO && il !== NO_IL) inner._remove(il);
-    (this.inner = s)._add(this.il = new FlattenListener(u, this));
+    (this.inner = s)._add((this.il = new FlattenListener(u, this)));
   }
 
   _e(err: any) {
@@ -838,7 +805,7 @@ class Fold<T, R> implements Operator<T, R> {
     if (u === NO) return;
     const r = _try(this, t, u);
     if (r === NO) return;
-    u._n(this.acc = r as R);
+    u._n((this.acc = r as R));
   }
 
   _e(err: any) {
@@ -976,7 +943,9 @@ class MapFlatten<T, R> implements Operator<T, R> {
     const s = _try(this.mapOp, v, u);
     if (s === NO) return;
     if (inner !== NO && il !== NO_IL) inner._remove(il);
-    (this.inner = s as Stream<R>)._add(this.il = new MapFlattenListener(u, this));
+    (this.inner = s as Stream<R>)._add(
+      (this.il = new MapFlattenListener(u, this)),
+    );
   }
 
   _e(err: any) {
@@ -1120,6 +1089,69 @@ class ReplaceError<T> implements Operator<T, T> {
   }
 }
 
+class Sample<T> implements Operator<any, T> {
+  public type = 'sample';
+  public ins: Stream<any>;
+  public out: Stream<T>;
+  public sig: Iterable<T>;
+  public itr: Iterator<T>;
+
+  constructor(signal: Iterable<T>, ins: Stream<any>) {
+    this.ins = ins;
+    this.out = NO as any;
+    this.sig = signal;
+    this.itr = NO as any;
+  }
+
+  _start(out: Stream<T>): void {
+    this.out = out;
+    this.itr = this.sig[Symbol.iterator]();
+    this.ins._add(this);
+  }
+
+  _stop(): void {
+    this.ins._remove(this);
+    this.out = NO as any;
+    // this.itr.return();
+    this.itr = NO as any;
+  }
+
+  _n(t: T) {
+    const u = this.out;
+    if (u === NO) {
+      return;
+    }
+    let r;
+    try {
+      r = this.itr.next();
+    } catch (e) {
+      u._e(e);
+      return;
+    }
+    if ((r as any).done) {
+      u._c();
+    } else {
+      u._n((r as any).value);
+    }
+  }
+
+  _e(err: any) {
+    const u = this.out;
+    if (u === NO) {
+      return;
+    }
+    u._e(err);
+  }
+
+  _c() {
+    const u = this.out;
+    if (u === NO) {
+      return;
+    }
+    u._c();
+  }
+}
+
 class StartWith<T> implements InternalProducer<T> {
   public type = 'startWith';
   public ins: Stream<T>;
@@ -1208,7 +1240,7 @@ export class Stream<T> implements InternalListener<T> {
   protected _err: any;
 
   constructor(producer?: InternalProducer<T>) {
-    this._prod = producer || NO as InternalProducer<T>;
+    this._prod = producer || (NO as InternalProducer<T>);
     this._ils = [];
     this._stopID = NO;
     this._dl = NO as InternalListener<T>;
@@ -1221,7 +1253,8 @@ export class Stream<T> implements InternalListener<T> {
     const a = this._ils;
     const L = a.length;
     if (this._d) this._dl._n(t);
-    if (L == 1) a[0]._n(t); else {
+    if (L == 1) a[0]._n(t);
+    else {
       const b = copy(a);
       for (let i = 0; i < L; i++) b[i]._n(t);
     }
@@ -1234,7 +1267,8 @@ export class Stream<T> implements InternalListener<T> {
     const L = a.length;
     this._x();
     if (this._d) this._dl._e(err);
-    if (L == 1) a[0]._e(err); else {
+    if (L == 1) a[0]._e(err);
+    else {
       const b = copy(a);
       for (let i = 0; i < L; i++) b[i]._e(err);
     }
@@ -1246,13 +1280,15 @@ export class Stream<T> implements InternalListener<T> {
     const L = a.length;
     this._x();
     if (this._d) this._dl._c();
-    if (L == 1) a[0]._c(); else {
+    if (L == 1) a[0]._c();
+    else {
       const b = copy(a);
       for (let i = 0; i < L; i++) b[i]._c();
     }
   }
 
-  _x(): void { // tear down logic, after error or complete
+  _x(): void {
+    // tear down logic, after error or complete
     if (this._ils.length === 0) return;
     if (this._prod !== NO) this._prod._stop();
     this._err = NO;
@@ -1315,10 +1351,16 @@ export class Stream<T> implements InternalListener<T> {
   _hasNoSinks(x: InternalListener<any>, trace: Array<any>): boolean {
     if (trace.indexOf(x) !== -1) {
       return true;
-    } else if ((x as any as OutSender<any>).out === this) {
+    } else if (((x as any) as OutSender<any>).out === this) {
       return true;
-    } else if ((x as any as OutSender<any>).out && (x as any as OutSender<any>).out !== NO) {
-      return this._hasNoSinks((x as any as OutSender<any>).out, trace.concat(x));
+    } else if (
+      ((x as any) as OutSender<any>).out &&
+      ((x as any) as OutSender<any>).out !== NO
+    ) {
+      return this._hasNoSinks(
+        ((x as any) as OutSender<any>).out,
+        trace.concat(x),
+      );
     } else if ((x as Stream<any>)._ils) {
       for (let i = 0, N = (x as Stream<any>)._ils.length; i < N; i++) {
         if (!this._hasNoSinks((x as Stream<any>)._ils[i], trace.concat(x))) {
@@ -1388,8 +1430,10 @@ export class Stream<T> implements InternalListener<T> {
    */
   static create<T>(producer?: Producer<T>): Stream<T> {
     if (producer) {
-      if (typeof producer.start !== 'function'
-      || typeof producer.stop !== 'function') {
+      if (
+        typeof producer.start !== 'function' ||
+        typeof producer.stop !== 'function'
+      ) {
         throw new Error('producer requires both start and stop functions');
       }
       internalizeProducer(producer); // mutates the input
@@ -1445,7 +1489,9 @@ export class Stream<T> implements InternalListener<T> {
    */
   static empty(): Stream<any> {
     return new Stream<any>({
-      _start(il: InternalListener<any>) { il._c(); },
+      _start(il: InternalListener<any>) {
+        il._c();
+      },
       _stop: noop,
     });
   }
@@ -1468,7 +1514,9 @@ export class Stream<T> implements InternalListener<T> {
    */
   static throw(error: any): Stream<any> {
     return new Stream<any>({
-      _start(il: InternalListener<any>) { il._e(error); },
+      _start(il: InternalListener<any>) {
+        il._e(error);
+      },
       _stop: noop,
     });
   }
@@ -1480,7 +1528,9 @@ export class Stream<T> implements InternalListener<T> {
    * @param {Array|Promise|Observable} input The input to make a stream from.
    * @return {Stream}
    */
-  static from<T>(input: Promise<T> | Stream<T> | Array<T> | Observable<T>): Stream<T> {
+  static from<T>(
+    input: Promise<T> | Stream<T> | Array<T> | Observable<T>,
+  ): Stream<T> {
     if (typeof input[$$observable] === 'function') {
       return Stream.fromObservable<T>(input);
     } else if (typeof (input as Promise<T>).then === 'function') {
@@ -1489,7 +1539,9 @@ export class Stream<T> implements InternalListener<T> {
       return Stream.fromArray<T>(input);
     }
 
-    throw new TypeError(`Type of input to from() must be an Array, Promise, or Observable`);
+    throw new TypeError(
+      `Type of input to from() must be an Array, Promise, or Observable`,
+    );
   }
 
   /**
@@ -1605,7 +1657,9 @@ export class Stream<T> implements InternalListener<T> {
    * or more streams may be given as arguments.
    * @return {Stream}
    */
-  static merge: MergeSignature = function merge(...streams: Array<Stream<any>>) {
+  static merge: MergeSignature = function merge(
+    ...streams: Array<Stream<any>>
+  ) {
     return new Stream<any>(new Merge(streams));
   } as MergeSignature;
 
@@ -1649,7 +1703,9 @@ export class Stream<T> implements InternalListener<T> {
    * Multiple streams, not just two, may be given as arguments.
    * @return {Stream}
    */
-  static combine: CombineSignature = function combine(...streams: Array<Stream<any>>) {
+  static combine: CombineSignature = function combine(
+    ...streams: Array<Stream<any>>
+  ) {
     return new Stream<Array<any>>(new Combine<any>(streams));
   } as CombineSignature;
 
@@ -1731,10 +1787,9 @@ export class Stream<T> implements InternalListener<T> {
   filter(passes: (t: T) => boolean): Stream<T> {
     const p = this._prod;
     if (p instanceof Filter) {
-      return new Stream<T>(new Filter<T>(
-        and((p as Filter<T>).f, passes),
-        (p as Filter<T>).ins
-      ));
+      return new Stream<T>(
+        new Filter<T>(and((p as Filter<T>).f, passes), (p as Filter<T>).ins),
+      );
     }
     return new Stream<T>(new Filter<T>(passes, this));
   }
@@ -1814,40 +1869,41 @@ export class Stream<T> implements InternalListener<T> {
    * @param initial The value or event to prepend.
    * @return {Signal}
    */
-  startWith(initial: T): Signal<T> {
-    const ins = this;
-    return Signal.create<T>({
-      [Symbol.iterator](): Iterator<T> {
-        let val: T = initial;
-        let err: any;
-        let hasErr: boolean = false;
-        let done: boolean = false;
-        const subscription = ins.subscribe({
-          next: (x: T) => {
-            val = x;
-          },
-          error: (e: any) => {
-            err = e;
-            hasErr = true;
-          },
-          complete: () => {
-            done = true;
-          },
-        })
-        return {
-          next(): IteratorResult<T> {
-            if (done) {
-              return {done: true, value: undefined};
-            } else if (hasErr) {
-              throw err;
-            } else {
-              return {done: false, value: val};
-            }
-          },
-        };
-      },
-    });
-  }
+
+  // startWith(initial: T): Signal<T> {
+  //   const ins = this;
+  //   return Signal.create<T>({
+  //     [Symbol.iterator](): Iterator<T> {
+  //       let val: T = initial;
+  //       let err: any;
+  //       let hasErr: boolean = false;
+  //       let done: boolean = false;
+  //       const subscription = ins.subscribe({
+  //         next: (x: T) => {
+  //           val = x;
+  //         },
+  //         error: (e: any) => {
+  //           err = e;
+  //           hasErr = true;
+  //         },
+  //         complete: () => {
+  //           done = true;
+  //         },
+  //       })
+  //       return {
+  //         next(): IteratorResult<T> {
+  //           if (done) {
+  //             return {done: true, value: undefined};
+  //           } else if (hasErr) {
+  //             throw err;
+  //           } else {
+  //             return {done: false, value: val};
+  //           }
+  //         },
+  //       };
+  //     },
+  //   });
+  // }
 
   /**
    * Uses another stream to determine when to complete the current stream.
@@ -1870,6 +1926,10 @@ export class Stream<T> implements InternalListener<T> {
    */
   endWhen(other: Stream<any>): Stream<T> {
     return new (this.ctor())<T>(new EndWhen<T>(other, this));
+  }
+
+  sample<R>(iterable: Iterable<R>): Stream<R> {
+    return new Stream<R>(new Sample<R>(iterable, this));
   }
 
   /**
@@ -1960,9 +2020,9 @@ export class Stream<T> implements InternalListener<T> {
   flatten<R>(this: Stream<Stream<R>>): T {
     const p = this._prod;
     return new Stream<R>(
-      p instanceof MapOp && !(p instanceof FilterMapFusion) ?
-        new MapFlatten(p as MapOp<any, Stream<R>>) :
-        new Flatten(this)
+      p instanceof MapOp && !(p instanceof FilterMapFusion)
+        ? new MapFlatten(p as MapOp<any, Stream<R>>)
+        : new Flatten(this),
     ) as T & Stream<R>;
   }
 
@@ -2091,9 +2151,11 @@ export class Stream<T> implements InternalListener<T> {
    */
   imitate(target: Stream<T>): void {
     if (target instanceof MemoryStream) {
-      throw new Error('A MemoryStream was given to imitate(), but it only ' +
-      'supports a Stream. Read more about this restriction here: ' +
-      'https://github.com/staltz/xstream#faq');
+      throw new Error(
+        'A MemoryStream was given to imitate(), but it only ' +
+          'supports a Stream. Read more about this restriction here: ' +
+          'https://github.com/staltz/xstream#faq',
+      );
     }
     this._target = target;
     for (let ils = this._ils, N = ils.length, i = 0; i < N; i++) {
@@ -2201,7 +2263,8 @@ export class MemoryStream<T> extends Stream<T> {
       if (this._has) il._n(this._v);
       clearTimeout(this._stopID);
       this._stopID = NO;
-    } else if (this._has) il._n(this._v); else {
+    } else if (this._has) il._n(this._v);
+    else {
       const p = this._prod;
       if (p !== NO) p._start(this);
     }

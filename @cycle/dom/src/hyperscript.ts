@@ -6,12 +6,18 @@ function mutateStreamWithNS(vNode: VNode): VNode {
   return vNode;
 }
 
-function addNS(data: any,
-               children: Array<VNode | string> | undefined,
-               selector: string | undefined): void {
+function addNS(
+  data: any,
+  children: Array<VNode | string> | undefined,
+  selector: string | undefined,
+): void {
   data.ns = `http://www.w3.org/2000/svg`;
-  if (selector !== `text` && selector !== `foreignObject` &&
-        typeof children !== 'undefined' && is.array(children)) {
+  if (
+    selector !== `text` &&
+    selector !== `foreignObject` &&
+    typeof children !== 'undefined' &&
+    is.array(children)
+  ) {
     for (let i = 0; i < children.length; ++i) {
       addNS(
         (children[i] as VNode).data,
@@ -46,7 +52,13 @@ export function h(sel: string, b?: any, c?: any): VNode {
     children = children.filter(x => !!x);
     for (let i = 0; i < children.length; ++i) {
       if (is.primitive(children[i])) {
-        children[i] = vnode(undefined as any, undefined, undefined, children[i] as any, undefined);
+        children[i] = vnode(
+          undefined as any,
+          undefined,
+          undefined,
+          children[i] as any,
+          undefined,
+        );
       }
     }
   }
@@ -54,4 +66,4 @@ export function h(sel: string, b?: any, c?: any): VNode {
     addNS(data, children, sel);
   }
   return vnode(sel, data, children, text, undefined);
-};
+}

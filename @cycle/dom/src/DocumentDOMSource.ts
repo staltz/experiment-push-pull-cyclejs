@@ -1,13 +1,12 @@
-import {Stream} from '../../xs';
-import {Signal} from '../../ys';
-import {adapt} from '../../run/src/adapt';
-import {DevToolEnabledSource} from '../../run/src';
+import {Stream} from 'xstream';
+import {Signal} from 'ysignal';
+import {adapt} from '@cycle/run/lib/adapt';
+import {DevToolEnabledSource} from '@cycle/run';
 import {DOMSource, EventsFnOptions} from './DOMSource';
 import {fromEvent} from './fromEvent';
 
 export class DocumentDOMSource implements DOMSource {
-  constructor(private _name: string) {
-  }
+  constructor(private _name: string) {}
 
   public select(selector: string): DOMSource {
     // This functionality is still undefined/undecided.
@@ -15,13 +14,17 @@ export class DocumentDOMSource implements DOMSource {
   }
 
   public elements(): Signal<Document> {
-    const out: DevToolEnabledSource & Signal<Document> =
-      adapt(Stream.of(document));
+    const out: DevToolEnabledSource & Signal<Document> = adapt(
+      Stream.of(document),
+    );
     out._isCycleSource = this._name;
     return out;
   }
 
-  public events(eventType: string, options: EventsFnOptions = {}): Stream<Event> {
+  public events(
+    eventType: string,
+    options: EventsFnOptions = {},
+  ): Stream<Event> {
     let stream: Stream<Event>;
     if (options && typeof options.useCapture === 'boolean') {
       stream = fromEvent(document, eventType, options.useCapture);

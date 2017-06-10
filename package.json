@@ -5,9 +5,10 @@
   "author": "Andre Staltz",
   "license": "MIT",
   "dependencies": {
-    "snabbdom": "^0.6.7",
-    "snabbdom-selector": "^1.2.0",
-    "symbol-observable": "^1.0.4"
+    "@cycle/dom": "file:./@cycle/dom",
+    "@cycle/run": "file:./@cycle/run",
+    "xstream": "file:./xstream",
+    "ysignal": "file:./ysignal"
   },
   "devDependencies": {
     "browserify": "13.0.x",

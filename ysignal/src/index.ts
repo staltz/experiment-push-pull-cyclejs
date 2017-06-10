@@ -1,69 +1,4 @@
-import {Stream, Listener, Operator} from './xs';
-
 export type Getter<T> = () => T;
-
-class Sample<T> implements Operator<T, T> {
-  public type = 'sample';
-  public ins: Stream<T>;
-  public out: Stream<T> | null;
-  public sig: Signal<T>;
-  public itr: Iterator<T> | null;
-
-  constructor(signal: Signal<T>, ins: Stream<T>) {
-    this.ins = ins;
-    this.out = null;
-    this.sig = signal;
-    this.itr = null;
-  }
-
-  _start(out: Stream<T>): void {
-    this.out = out;
-    this.itr = this.sig.init();
-    this.ins._add(this);
-  }
-
-  _stop(): void {
-    this.ins._remove(this);
-    this.out = null;
-    this.itr.return();
-    this.itr = null;
-  }
-
-  _n(t: T) {
-    const u = this.out;
-    if (u === null) {
-      return;
-    }
-    let r;
-    try {
-      r = this.itr.next();
-    } catch (e) {
-      u._e(e);
-      return;
-    }
-    if (r.done) {
-      u._c();
-    } else {
-      u._n(r.value);
-    }
-  }
-
-  _e(err: any) {
-    const u = this.out;
-    if (u === null) {
-      return;
-    }
-    u._e(err);
-  }
-
-  _c() {
-    const u = this.out;
-    if (u === null) {
-      return;
-    }
-    u._c();
-  }
-}
 
 export class Signal<T> implements Iterable<T> {
   constructor(iterable: Iterable<T>) {
@@ -100,10 +35,6 @@ export class Signal<T> implements Iterable<T> {
     return Signal.from<T>(() => val);
   }
 
-  public sample(sampler: Stream<any>): Stream<T> {
-    return new Stream<T>(new Sample<T>(this, sampler));
-  }
-
   // public take(amount: number): Signal<T> {
   // }
 
@@ -120,7 +51,7 @@ export class Signal<T> implements Iterable<T> {
           next(): IteratorResult<R> {
             const t = tIter.next();
             if (t.done) {
-              return {done: true, value: undefined};
+              return {done: true, value: undefined as any};
             } else {
               return {done: false, value: project(t.value)};
             }
@@ -145,7 +76,7 @@ export class Signal<T> implements Iterable<T> {
             }
             const t = tIter.next();
             if (t.done) {
-              return {done: true, value: undefined};
+              return {done: true, value: undefined as any};
             } else {
               const r = accumulate(acc, t.value);
               acc = r;

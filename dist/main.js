@@ -1,10 +1,33 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
-var xs_1 = require("../../xs");
-var adapt_1 = require("../../run/src/adapt");
+var ysignal_1 = require("ysignal");
+var run_1 = require("@cycle/run");
+var dom_1 = require("@cycle/dom");
+function main(sources) {
+    var vdomS = sources.windowHeight.map(function (height) {
+        return dom_1.div(".foo", "Height: " + height);
+    });
+    return {
+        DOM: vdomS
+    };
+}
+run_1.run(main, {
+    windowHeight: function () {
+        return ysignal_1.Signal.from(function () {
+            return window.outerHeight;
+        });
+    },
+    DOM: dom_1.makeDOMDriver("#main-container")
+});
+
+
+},{"@cycle/dom":8,"@cycle/run":14,"ysignal":32}],2:[function(require,module,exports){
+"use strict";
+var xstream_1 = require("xstream");
+var adapt_1 = require("@cycle/run/lib/adapt");
 var fromEvent_1 = require("./fromEvent");
-var DocumentDOMSource = function () {
+var DocumentDOMSource = (function () {
     function DocumentDOMSource(_name) {
         this._name = _name;
     }
@@ -13,18 +36,17 @@ var DocumentDOMSource = function () {
         return this;
     };
     DocumentDOMSource.prototype.elements = function () {
-        var out = adapt_1.adapt(xs_1.Stream.of(document));
+        var out = adapt_1.adapt(xstream_1.Stream.of(document));
         out._isCycleSource = this._name;
         return out;
     };
     DocumentDOMSource.prototype.events = function (eventType, options) {
-        if (options === void 0) {
-            options = {};
-        }
+        if (options === void 0) { options = {}; }
         var stream;
-        if (options && typeof options.useCapture === 'boolean') {
+        if (options && typeof options.useCapture === "boolean") {
             stream = fromEvent_1.fromEvent(document, eventType, options.useCapture);
-        } else {
+        }
+        else {
             stream = fromEvent_1.fromEvent(document, eventType);
         }
         var out = adapt_1.adapt(stream);
@@ -32,23 +54,50 @@ var DocumentDOMSource = function () {
         return out;
     };
     return DocumentDOMSource;
-}();
+}());
 exports.DocumentDOMSource = DocumentDOMSource;
 
-
-},{"../../run/src/adapt":13,"../../xs":15,"./fromEvent":4}],2:[function(require,module,exports){
+},{"./fromEvent":5,"@cycle/run/lib/adapt":13,"xstream":31}],3:[function(require,module,exports){
 "use strict";
-
-var xs_1 = require("../../xs");
-var adapt_1 = require("../../run/src/adapt");
+var xstream_1 = require("xstream");
+var adapt_1 = require("@cycle/run/lib/adapt");
 var DocumentDOMSource_1 = require("./DocumentDOMSource");
 var fromEvent_1 = require("./fromEvent");
 var isolate_1 = require("./isolate");
 var utils_1 = require("./utils");
-var eventTypesThatDontBubble = ["blur", "canplay", "canplaythrough", "change", "durationchange", "emptied", "ended", "focus", "load", "loadeddata", "loadedmetadata", "mouseenter", "mouseleave", "pause", "play", "playing", "ratechange", "reset", "scroll", "seeked", "seeking", "stalled", "submit", "suspend", "timeupdate", "unload", "volumechange", "waiting"];
+var eventTypesThatDontBubble = [
+    "blur",
+    "canplay",
+    "canplaythrough",
+    "change",
+    "durationchange",
+    "emptied",
+    "ended",
+    "focus",
+    "load",
+    "loadeddata",
+    "loadedmetadata",
+    "mouseenter",
+    "mouseleave",
+    "pause",
+    "play",
+    "playing",
+    "ratechange",
+    "reset",
+    "scroll",
+    "seeked",
+    "seeking",
+    "stalled",
+    "submit",
+    "suspend",
+    "timeupdate",
+    "unload",
+    "volumechange",
+    "waiting"
+];
 function determineUseCapture(eventType, options) {
     var result = false;
-    if (typeof options.useCapture === 'boolean') {
+    if (typeof options.useCapture === "boolean") {
         result = options.useCapture;
     }
     if (eventTypesThatDontBubble.indexOf(eventType) !== -1) {
@@ -56,11 +105,9 @@ function determineUseCapture(eventType, options) {
     }
     return result;
 }
-var MainDOMSource = function () {
+var MainDOMSource = (function () {
     function MainDOMSource(_rootElementS, _rootElementIter, _namespace, _name) {
-        if (_namespace === void 0) {
-            _namespace = [];
-        }
+        if (_namespace === void 0) { _namespace = []; }
         var _this = this;
         this._rootElementS = _rootElementS;
         this._rootElementIter = _rootElementIter;
@@ -69,9 +116,7 @@ var MainDOMSource = function () {
         this.isolateSource = isolate_1.isolateSource;
         this.isolateSink = function (sink, scope) {
             var prevFullScope = utils_1.getFullScope(_this._namespace);
-            var nextFullScope = [prevFullScope, scope].filter(function (x) {
-                return !!x;
-            }).join('-');
+            var nextFullScope = [prevFullScope, scope].filter(function (x) { return !!x; }).join("-");
             return isolate_1.isolateSink(sink, nextFullScope);
         };
     }
@@ -89,36 +134,41 @@ var MainDOMSource = function () {
         configurable: true
     });
     MainDOMSource.prototype.select = function (selector) {
-        if (typeof selector !== 'string') {
-            throw new Error("DOM driver's select() expects the argument to be a " + "string as a CSS selector");
+        if (typeof selector !== "string") {
+            throw new Error("DOM driver's select() expects the argument to be a " +
+                "string as a CSS selector");
         }
-        if (selector === 'document') {
+        if (selector === "document") {
             return new DocumentDOMSource_1.DocumentDOMSource(this._name);
         }
         // if (selector === 'body') {
         //   return new BodyDOMSource(this._name);
         // }
         var trimmedSelector = selector.trim();
-        var childNamespace = trimmedSelector === ":root" ? this._namespace : this._namespace.concat(trimmedSelector);
+        var childNamespace = trimmedSelector === ":root"
+            ? this._namespace
+            : this._namespace.concat(trimmedSelector);
         return new MainDOMSource(this._rootElementS, this._rootElementIter, childNamespace, this._name);
     };
     MainDOMSource.prototype.events = function (eventType, options) {
         var _this = this;
-        if (options === void 0) {
-            options = {};
-        }
+        if (options === void 0) { options = {}; }
         if (typeof eventType !== "string") {
-            throw new Error("DOM driver's events() expects argument to be a " + "string representing the event type to listen for.");
+            throw new Error("DOM driver's events() expects argument to be a " +
+                "string representing the event type to listen for.");
         }
         var useCapture = determineUseCapture(eventType, options);
-        var event$ = xs_1.Stream.of(null).map(function () {
+        var event$ = xstream_1.Stream.of(null)
+            .map(function () {
             var next = _this._rootElementIter.next();
             if (next.done) {
-                return xs_1.Stream.empty();
-            } else {
+                return xstream_1.Stream.empty();
+            }
+            else {
                 return fromEvent_1.fromEvent(next.value, eventType, useCapture);
             }
-        });
+        })
+            .flatten();
         var out = adapt_1.adapt(event$);
         out._isCycleSource = this._name;
         return out;
@@ -128,17 +178,15 @@ var MainDOMSource = function () {
         // this._isolateModule.reset();
     };
     return MainDOMSource;
-}();
+}());
 exports.MainDOMSource = MainDOMSource;
 
-
-},{"../../run/src/adapt":13,"../../xs":15,"./DocumentDOMSource":1,"./fromEvent":4,"./isolate":8,"./utils":11}],3:[function(require,module,exports){
+},{"./DocumentDOMSource":2,"./fromEvent":5,"./isolate":9,"./utils":12,"@cycle/run/lib/adapt":13,"xstream":31}],4:[function(require,module,exports){
 "use strict";
-
 var hyperscript_1 = require("./hyperscript");
 var classNameFromVNode_1 = require("snabbdom-selector/lib/commonjs/classNameFromVNode");
 var selectorParser_1 = require("snabbdom-selector/lib/commonjs/selectorParser");
-var VNodeWrapper = function () {
+var VNodeWrapper = (function () {
     function VNodeWrapper(rootElement) {
         this.rootElement = rootElement;
     }
@@ -146,43 +194,36 @@ var VNodeWrapper = function () {
         if (vnode === null) {
             return this.wrap([]);
         }
-        var _a = selectorParser_1.selectorParser(vnode),
-            selTagName = _a.tagName,
-            selId = _a.id;
+        var _a = selectorParser_1.selectorParser(vnode), selTagName = _a.tagName, selId = _a.id;
         var vNodeClassName = classNameFromVNode_1.classNameFromVNode(vnode);
         var vNodeData = vnode.data || {};
         var vNodeDataProps = vNodeData.props || {};
-        var _b = vNodeDataProps.id,
-            vNodeId = _b === void 0 ? selId : _b;
-        var isVNodeAndRootElementIdentical = typeof vNodeId === 'string' && vNodeId.toUpperCase() === this.rootElement.id.toUpperCase() && selTagName.toUpperCase() === this.rootElement.tagName.toUpperCase() && vNodeClassName.toUpperCase() === this.rootElement.className.toUpperCase();
+        var _b = vNodeDataProps.id, vNodeId = _b === void 0 ? selId : _b;
+        var isVNodeAndRootElementIdentical = typeof vNodeId === "string" &&
+            vNodeId.toUpperCase() === this.rootElement.id.toUpperCase() &&
+            selTagName.toUpperCase() === this.rootElement.tagName.toUpperCase() &&
+            vNodeClassName.toUpperCase() === this.rootElement.className.toUpperCase();
         if (isVNodeAndRootElementIdentical) {
             return vnode;
         }
         return this.wrap([vnode]);
     };
     VNodeWrapper.prototype.wrap = function (children) {
-        var _a = this.rootElement,
-            tagName = _a.tagName,
-            id = _a.id,
-            className = _a.className;
-        var selId = id ? "#" + id : '';
-        var selClass = className ? "." + className.split(" ").join(".") : '';
+        var _a = this.rootElement, tagName = _a.tagName, id = _a.id, className = _a.className;
+        var selId = id ? "#" + id : "";
+        var selClass = className ? "." + className.split(" ").join(".") : "";
         return hyperscript_1.h("" + tagName.toLowerCase() + selId + selClass, {}, children);
     };
     return VNodeWrapper;
-}();
+}());
 exports.VNodeWrapper = VNodeWrapper;
 
-
-},{"./hyperscript":6,"snabbdom-selector/lib/commonjs/classNameFromVNode":18,"snabbdom-selector/lib/commonjs/selectorParser":19}],4:[function(require,module,exports){
+},{"./hyperscript":7,"snabbdom-selector/lib/commonjs/classNameFromVNode":15,"snabbdom-selector/lib/commonjs/selectorParser":16}],5:[function(require,module,exports){
 "use strict";
-
-var xs_1 = require("../../xs");
+var xstream_1 = require("xstream");
 function fromEvent(element, eventName, useCapture) {
-    if (useCapture === void 0) {
-        useCapture = false;
-    }
-    return xs_1.Stream.create({
+    if (useCapture === void 0) { useCapture = false; }
+    return xstream_1.Stream.create({
         element: element,
         next: null,
         start: function start(listener) {
@@ -198,10 +239,8 @@ function fromEvent(element, eventName, useCapture) {
 }
 exports.fromEvent = fromEvent;
 
-
-},{"../../xs":15}],5:[function(require,module,exports){
+},{"xstream":31}],6:[function(require,module,exports){
 "use strict";
-
 var hyperscript_1 = require("./hyperscript");
 function isValidString(param) {
     return typeof param === 'string' && param.length > 0;
@@ -214,26 +253,58 @@ function createTagFunction(tagName) {
         if (isSelector(first)) {
             if (typeof b !== 'undefined' && typeof c !== 'undefined') {
                 return hyperscript_1.h(tagName + first, b, c);
-            } else if (typeof b !== 'undefined') {
+            }
+            else if (typeof b !== 'undefined') {
                 return hyperscript_1.h(tagName + first, b);
-            } else {
+            }
+            else {
                 return hyperscript_1.h(tagName + first, {});
             }
-        } else if (!!b) {
+        }
+        else if (!!b) {
             return hyperscript_1.h(tagName, first, b);
-        } else if (!!first) {
+        }
+        else if (!!first) {
             return hyperscript_1.h(tagName, first);
-        } else {
+        }
+        else {
             return hyperscript_1.h(tagName, {});
         }
     };
 }
-var SVG_TAG_NAMES = ['a', 'altGlyph', 'altGlyphDef', 'altGlyphItem', 'animate', 'animateColor', 'animateMotion', 'animateTransform', 'circle', 'clipPath', 'colorProfile', 'cursor', 'defs', 'desc', 'ellipse', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotlight', 'feTile', 'feTurbulence', 'filter', 'font', 'fontFace', 'fontFaceFormat', 'fontFaceName', 'fontFaceSrc', 'fontFaceUri', 'foreignObject', 'g', 'glyph', 'glyphRef', 'hkern', 'image', 'line', 'linearGradient', 'marker', 'mask', 'metadata', 'missingGlyph', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialGradient', 'rect', 'script', 'set', 'stop', 'style', 'switch', 'symbol', 'text', 'textPath', 'title', 'tref', 'tspan', 'use', 'view', 'vkern'];
+var SVG_TAG_NAMES = [
+    'a', 'altGlyph', 'altGlyphDef', 'altGlyphItem', 'animate', 'animateColor',
+    'animateMotion', 'animateTransform', 'circle', 'clipPath', 'colorProfile',
+    'cursor', 'defs', 'desc', 'ellipse', 'feBlend', 'feColorMatrix',
+    'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting',
+    'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB',
+    'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode',
+    'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting',
+    'feSpotlight', 'feTile', 'feTurbulence', 'filter', 'font', 'fontFace',
+    'fontFaceFormat', 'fontFaceName', 'fontFaceSrc', 'fontFaceUri',
+    'foreignObject', 'g', 'glyph', 'glyphRef', 'hkern', 'image', 'line',
+    'linearGradient', 'marker', 'mask', 'metadata', 'missingGlyph', 'mpath',
+    'path', 'pattern', 'polygon', 'polyline', 'radialGradient', 'rect', 'script',
+    'set', 'stop', 'style', 'switch', 'symbol', 'text', 'textPath', 'title',
+    'tref', 'tspan', 'use', 'view', 'vkern',
+];
 var svg = createTagFunction('svg');
 SVG_TAG_NAMES.forEach(function (tag) {
     svg[tag] = createTagFunction(tag);
 });
-var TAG_NAMES = ['a', 'abbr', 'address', 'area', 'article', 'aside', 'audio', 'b', 'base', 'bdi', 'bdo', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'cite', 'code', 'col', 'colgroup', 'dd', 'del', 'dfn', 'dir', 'div', 'dl', 'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'keygen', 'label', 'legend', 'li', 'link', 'main', 'map', 'mark', 'menu', 'meta', 'nav', 'noscript', 'object', 'ol', 'optgroup', 'option', 'p', 'param', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'script', 'section', 'select', 'small', 'source', 'span', 'strong', 'style', 'sub', 'sup', 'table', 'tbody', 'td', 'textarea', 'tfoot', 'th', 'thead', 'title', 'tr', 'u', 'ul', 'video'];
+var TAG_NAMES = [
+    'a', 'abbr', 'address', 'area', 'article', 'aside', 'audio', 'b', 'base',
+    'bdi', 'bdo', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption',
+    'cite', 'code', 'col', 'colgroup', 'dd', 'del', 'dfn', 'dir', 'div', 'dl',
+    'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html',
+    'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'keygen', 'label', 'legend',
+    'li', 'link', 'main', 'map', 'mark', 'menu', 'meta', 'nav', 'noscript',
+    'object', 'ol', 'optgroup', 'option', 'p', 'param', 'pre', 'progress', 'q',
+    'rp', 'rt', 'ruby', 's', 'samp', 'script', 'section', 'select', 'small',
+    'source', 'span', 'strong', 'style', 'sub', 'sup', 'table', 'tbody', 'td',
+    'textarea', 'tfoot', 'th', 'thead', 'title', 'tr', 'u', 'ul', 'video',
+];
 var exported = { SVG_TAG_NAMES: SVG_TAG_NAMES, TAG_NAMES: TAG_NAMES, svg: svg, isSelector: isSelector, createTagFunction: createTagFunction };
 TAG_NAMES.forEach(function (n) {
     exported[n] = createTagFunction(n);
@@ -241,10 +312,8 @@ TAG_NAMES.forEach(function (n) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exported;
 
-
-},{"./hyperscript":6}],6:[function(require,module,exports){
+},{"./hyperscript":7}],7:[function(require,module,exports){
 "use strict";
-
 var vnode_1 = require("snabbdom/vnode");
 var is = require("snabbdom/is");
 function mutateStreamWithNS(vNode) {
@@ -253,7 +322,8 @@ function mutateStreamWithNS(vNode) {
 }
 function addNS(data, children, selector) {
     data.ns = "http://www.w3.org/2000/svg";
-    if (selector !== "text" && selector !== "foreignObject" && typeof children !== 'undefined' && is.array(children)) {
+    if (selector !== "text" && selector !== "foreignObject" &&
+        typeof children !== 'undefined' && is.array(children)) {
         for (var i = 0; i < children.length; ++i) {
             addNS(children[i].data, children[i].children, children[i].sel);
         }
@@ -267,22 +337,24 @@ function h(sel, b, c) {
         data = b;
         if (is.array(c)) {
             children = c;
-        } else if (is.primitive(c)) {
+        }
+        else if (is.primitive(c)) {
             text = c;
         }
-    } else if (arguments.length === 2) {
+    }
+    else if (arguments.length === 2) {
         if (is.array(b)) {
             children = b;
-        } else if (is.primitive(b)) {
+        }
+        else if (is.primitive(b)) {
             text = b;
-        } else {
+        }
+        else {
             data = b;
         }
     }
     if (is.array(children)) {
-        children = children.filter(function (x) {
-            return !!x;
-        });
+        children = children.filter(function (x) { return !!x; });
         for (var i = 0; i < children.length; ++i) {
             if (is.primitive(children[i])) {
                 children[i] = vnode_1.vnode(undefined, undefined, undefined, children[i], undefined);
@@ -297,10 +369,8 @@ function h(sel, b, c) {
 exports.h = h;
 ;
 
-
-},{"snabbdom/is":22,"snabbdom/vnode":30}],7:[function(require,module,exports){
+},{"snabbdom/is":19,"snabbdom/vnode":27}],8:[function(require,module,exports){
 "use strict";
-
 var thunk_1 = require("snabbdom/thunk");
 exports.thunk = thunk_1.thunk;
 var MainDOMSource_1 = require("./MainDOMSource");
@@ -494,10 +564,8 @@ exports.u = hyperscript_helpers_1.default.u;
 exports.ul = hyperscript_helpers_1.default.ul;
 exports.video = hyperscript_helpers_1.default.video;
 
-
-},{"./MainDOMSource":2,"./hyperscript":6,"./hyperscript-helpers":5,"./makeDOMDriver":9,"snabbdom/thunk":29}],8:[function(require,module,exports){
+},{"./MainDOMSource":3,"./hyperscript":7,"./hyperscript-helpers":6,"./makeDOMDriver":10,"snabbdom/thunk":26}],9:[function(require,module,exports){
 "use strict";
-
 var utils_1 = require("./utils");
 function isolateSource(source, scope) {
     return source.select(utils_1.SCOPE_PREFIX + scope);
@@ -510,7 +578,9 @@ function isolateSink(sink, fullScope) {
             var isolateData = vnode.data.isolate;
             var prevFullScopeNum = isolateData.replace(/(cycle|\-)/g, '');
             var fullScopeNum = fullScope.replace(/(cycle|\-)/g, '');
-            if (isNaN(parseInt(prevFullScopeNum)) || isNaN(parseInt(fullScopeNum)) || prevFullScopeNum > fullScopeNum) {
+            if (isNaN(parseInt(prevFullScopeNum))
+                || isNaN(parseInt(fullScopeNum))
+                || prevFullScopeNum > fullScopeNum) {
                 return vnode;
             }
         }
@@ -525,13 +595,10 @@ function isolateSink(sink, fullScope) {
 }
 exports.isolateSink = isolateSink;
 
-
-},{"./utils":11}],9:[function(require,module,exports){
+},{"./utils":12}],10:[function(require,module,exports){
 "use strict";
-
 var snabbdom_1 = require("snabbdom");
-var ys_1 = require("../../ys");
-var xy_1 = require("../../xy");
+var ysignal_1 = require("ysignal");
 var MainDOMSource_1 = require("./MainDOMSource");
 var VNodeWrapper_1 = require("./VNodeWrapper");
 var utils_1 = require("./utils");
@@ -542,8 +609,9 @@ function makeDOMDriverInputGuard(modules) {
     }
 }
 function domDriverInputGuard(viewS) {
-    if (!viewS || typeof viewS.init !== "function" || typeof viewS.sample !== "function") {
-        throw new Error("The DOM driver function expects as input a Signal of " + "virtual DOM elements");
+    if (!viewS || typeof viewS.init !== "function") {
+        throw new Error("The DOM driver function expects as input a Signal of " +
+            "virtual DOM elements");
     }
 }
 function unwrapElementFromVNode(vnode) {
@@ -552,6 +620,23 @@ function unwrapElementFromVNode(vnode) {
 function reportSnabbdomError(err) {
     (console.error || console.log)(err);
 }
+var MimicIterator = (function () {
+    function MimicIterator() {
+    }
+    MimicIterator.prototype.imitate = function (target) {
+        this.target = target;
+    };
+    MimicIterator.prototype.next = function (value) {
+        var target = this.target;
+        if (target) {
+            return target.next(value);
+        }
+        else {
+            throw new Error("MimicIterator cannot be pulled before its target iterator is set.");
+        }
+    };
+    return MimicIterator;
+}());
 function makeDOMDriver(container, options) {
     if (!options) {
         options = {};
@@ -562,32 +647,31 @@ function makeDOMDriver(container, options) {
     var vnodeWrapper = new VNodeWrapper_1.VNodeWrapper(rootElement);
     makeDOMDriverInputGuard(modules);
     function DOMDriver(vnodeProxy, name) {
-        if (name === void 0) {
-            name = 'DOM';
-        }
-        var vnodeS = ys_1.Signal.create(vnodeProxy);
+        if (name === void 0) { name = "DOM"; }
+        var vnodeS = ysignal_1.Signal.create(vnodeProxy);
         domDriverInputGuard(vnodeS);
-        var rootElementS = vnodeS.map(function (vnode) {
-            return vnodeWrapper.call(vnode);
-        }).fold(patch, rootElement).drop(1).map(unwrapElementFromVNode).startWith(rootElement);
-        var proxy = new xy_1.PushPullProxy();
-        var iter = proxy[Symbol.iterator]();
+        var rootElementS = vnodeS
+            .map(function (vnode) { return vnodeWrapper.call(vnode); })
+            .fold(patch, rootElement)
+            .drop(1)
+            .map(unwrapElementFromVNode)
+            .startWith(rootElement);
+        var iter = new MimicIterator();
         // Start the snabbdom patching, over time
         var listener = { error: reportSnabbdomError };
-        if (document.readyState === 'loading') {
-            document.addEventListener('readystatechange', function () {
-                if (document.readyState === 'interactive') {
-                    iter = rootElementS.init();
-                    proxy.imitateIterator(iter);
+        if (document.readyState === "loading") {
+            document.addEventListener("readystatechange", function () {
+                if (document.readyState === "interactive") {
+                    iter.imitate(rootElementS.init());
                     requestAnimationFrame(function again1() {
                         iter.next();
                         requestAnimationFrame(again1);
                     });
                 }
             });
-        } else {
-            iter = rootElementS.init();
-            proxy.imitateIterator(iter);
+        }
+        else {
+            iter.imitate(rootElementS.init());
             requestAnimationFrame(function again2() {
                 iter.next();
                 requestAnimationFrame(again2);
@@ -595,15 +679,12 @@ function makeDOMDriver(container, options) {
         }
         return new MainDOMSource_1.MainDOMSource(rootElementS, iter, [], name);
     }
-    ;
     return DOMDriver;
 }
 exports.makeDOMDriver = makeDOMDriver;
 
-
-},{"../../xy":16,"../../ys":17,"./MainDOMSource":2,"./VNodeWrapper":3,"./modules":10,"./utils":11,"snabbdom":28}],10:[function(require,module,exports){
+},{"./MainDOMSource":3,"./VNodeWrapper":4,"./modules":11,"./utils":12,"snabbdom":25,"ysignal":32}],11:[function(require,module,exports){
 "use strict";
-
 var class_1 = require("snabbdom/modules/class");
 exports.ClassModule = class_1.default;
 var props_1 = require("snabbdom/modules/props");
@@ -618,20 +699,26 @@ var modules = [style_1.default, class_1.default, props_1.default, attributes_1.d
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = modules;
 
-
-},{"snabbdom/modules/attributes":23,"snabbdom/modules/class":24,"snabbdom/modules/dataset":25,"snabbdom/modules/props":26,"snabbdom/modules/style":27}],11:[function(require,module,exports){
+},{"snabbdom/modules/attributes":20,"snabbdom/modules/class":21,"snabbdom/modules/dataset":22,"snabbdom/modules/props":23,"snabbdom/modules/style":24}],12:[function(require,module,exports){
 "use strict";
-
 function isElement(obj) {
-    return typeof HTMLElement === "object" ? obj instanceof HTMLElement || obj instanceof DocumentFragment : obj && typeof obj === "object" && obj !== null && (obj.nodeType === 1 || obj.nodeType === 11) && typeof obj.nodeName === "string";
+    return typeof HTMLElement === "object" ?
+        obj instanceof HTMLElement || obj instanceof DocumentFragment :
+        obj && typeof obj === "object" && obj !== null &&
+            (obj.nodeType === 1 || obj.nodeType === 11) &&
+            typeof obj.nodeName === "string";
 }
 exports.SCOPE_PREFIX = "$$CYCLEDOM$$-";
 function getElement(selectors) {
-    var domElement = typeof selectors === 'string' ? document.querySelector(selectors) : selectors;
+    var domElement = typeof selectors === 'string' ?
+        document.querySelector(selectors) :
+        selectors;
     if (typeof selectors === 'string' && domElement === null) {
         throw new Error("Cannot render into unknown element `" + selectors + "`");
-    } else if (!isElement(domElement)) {
-        throw new Error("Given container is not a DOM element neither a " + "selector string.");
+    }
+    else if (!isElement(domElement)) {
+        throw new Error("Given container is not a DOM element neither a " +
+            "selector string.");
     }
     return domElement;
 }
@@ -642,51 +729,20 @@ exports.getElement = getElement;
  * scopes in the namespace.
  */
 function getFullScope(namespace) {
-    return namespace.filter(function (c) {
-        return c.indexOf(exports.SCOPE_PREFIX) > -1;
-    }).map(function (c) {
-        return c.replace(exports.SCOPE_PREFIX, '');
-    }).join('-');
+    return namespace
+        .filter(function (c) { return c.indexOf(exports.SCOPE_PREFIX) > -1; })
+        .map(function (c) { return c.replace(exports.SCOPE_PREFIX, ''); })
+        .join('-');
 }
 exports.getFullScope = getFullScope;
 function getSelectors(namespace) {
-    return namespace.filter(function (c) {
-        return c.indexOf(exports.SCOPE_PREFIX) === -1;
-    }).join(" ");
+    return namespace.filter(function (c) { return c.indexOf(exports.SCOPE_PREFIX) === -1; }).join(" ");
 }
 exports.getSelectors = getSelectors;
 
-
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 "use strict";
-
-var ys_1 = require("./ys");
-var src_1 = require("./run/src");
-var src_2 = require("./dom/src");
-function main(sources) {
-    var vdomS = sources.windowHeight.map(function (height) {
-        return src_2.div('.foo', 'Height: ' + height);
-    });
-    return {
-        DOM: vdomS
-    };
-}
-src_1.run(main, {
-    windowHeight: function () {
-        return ys_1.Signal.from(function () {
-            return window.outerHeight;
-        });
-    },
-    DOM: src_2.makeDOMDriver('#main-container')
-});
-
-
-},{"./dom/src":7,"./run/src":14,"./ys":17}],13:[function(require,module,exports){
-"use strict";
-
-var adaptStream = function (x) {
-    return x;
-};
+var adaptStream = function (x) { return x; };
 function setAdapt(f) {
     adaptStream = f;
 }
@@ -696,18 +752,41 @@ function adapt(stream) {
 }
 exports.adapt = adapt;
 
-
 },{}],14:[function(require,module,exports){
 "use strict";
-
-var xs_1 = require("../../xs");
-var xy_1 = require("../../xy");
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var xstream_1 = require("xstream");
 var adapt_1 = require("./adapt");
+var PushPullProxy = (function (_super) {
+    __extends(PushPullProxy, _super);
+    function PushPullProxy() {
+        var _this = _super.call(this, undefined) || this;
+        _this.iterator = {
+            next: function () {
+                return { done: false, value: undefined };
+            }
+        };
+        return _this;
+    }
+    PushPullProxy.prototype[Symbol.iterator] = function () {
+        return this.iterator;
+    };
+    PushPullProxy.prototype.imitateIterator = function (iterator) {
+        this.iterator = iterator;
+    };
+    return PushPullProxy;
+}(xstream_1.MemoryStream));
+exports.PushPullProxy = PushPullProxy;
 function logToConsoleError(err) {
     var target = err.stack || err;
     if (console && console.error) {
         console.error(target);
-    } else if (console && console.log) {
+    }
+    else if (console && console.log) {
         console.log(target);
     }
 }
@@ -715,7 +794,7 @@ function makeSinkProxies(drivers) {
     var sinkProxies = {};
     for (var name_1 in drivers) {
         if (drivers.hasOwnProperty(name_1)) {
-            sinkProxies[name_1] = new xy_1.PushPullProxy();
+            sinkProxies[name_1] = new PushPullProxy();
         }
     }
     return sinkProxies;
@@ -725,7 +804,7 @@ function callDrivers(drivers, sinkProxies) {
     for (var name_2 in drivers) {
         if (drivers.hasOwnProperty(name_2)) {
             sources[name_2] = drivers[name_2](sinkProxies[name_2], name_2);
-            if (sources[name_2] && typeof sources[name_2] === 'object') {
+            if (sources[name_2] && typeof sources[name_2] === "object") {
                 sources[name_2]._isCycleSource = name_2;
             }
         }
@@ -735,41 +814,33 @@ function callDrivers(drivers, sinkProxies) {
 // NOTE: this will mutate `sources`.
 function adaptSources(sources) {
     for (var name_3 in sources) {
-        if (sources.hasOwnProperty(name_3) && sources[name_3] && typeof sources[name_3]['shamefullySendNext'] === 'function') {
+        if (sources.hasOwnProperty(name_3) &&
+            sources[name_3] &&
+            typeof sources[name_3]["shamefullySendNext"] === "function") {
             sources[name_3] = adapt_1.adapt(sources[name_3]);
         }
     }
     return sources;
 }
 function replicateMany(sinks, sinkProxies) {
-    var sinkNames = Object.keys(sinks).filter(function (name) {
-        return !!sinkProxies[name];
-    });
+    var sinkNames = Object.keys(sinks).filter(function (name) { return !!sinkProxies[name]; });
     var buffers = {};
     var replicators = {};
     sinkNames.forEach(function (name) {
         buffers[name] = { _n: [], _e: [] };
         replicators[name] = {
-            next: function (x) {
-                return buffers[name]._n.push(x);
-            },
-            error: function (err) {
-                return buffers[name]._e.push(err);
-            },
-            complete: function () {}
+            next: function (x) { return buffers[name]._n.push(x); },
+            error: function (err) { return buffers[name]._e.push(err); },
+            complete: function () { }
         };
     });
-    var streamSinkNames = sinkNames.filter(function (name) {
-        return sinks[name] && typeof sinks[name]['subscribe'] === 'function';
-    });
-    var signalSinkNames = sinkNames.filter(function (name) {
-        return sinks[name] && typeof sinks[name]['init'] === 'function';
-    });
+    var streamSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]["subscribe"] === "function"; });
+    var signalSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]["init"] === "function"; });
     var subscriptions = streamSinkNames.map(function (name) {
-        return xs_1.default.fromObservable(sinks[name]).subscribe(replicators[name]);
+        return xstream_1.default.fromObservable(sinks[name]).subscribe(replicators[name]);
     });
     signalSinkNames.map(function (name) {
-        return sinkProxies[name].imitateIterator(sinks[name].init());
+        return sinkProxies[name].imitateIterator(sinks[name][Symbol.iterator]());
     });
     streamSinkNames.forEach(function (name) {
         var listener = sinkProxies[name];
@@ -777,7 +848,8 @@ function replicateMany(sinks, sinkProxies) {
             listener._n(x);
         };
         var error = function (err) {
-            logToConsoleError(err);listener._e(err);
+            logToConsoleError(err);
+            listener._e(err);
         };
         buffers[name]._n.forEach(next);
         buffers[name]._e.forEach(error);
@@ -790,20 +862,19 @@ function replicateMany(sinks, sinkProxies) {
     });
     buffers = null; // free up for GC
     return function disposeReplication() {
-        subscriptions.forEach(function (s) {
-            return s.unsubscribe();
-        });
-        streamSinkNames.forEach(function (name) {
-            return sinkProxies[name]._c();
-        });
+        subscriptions.forEach(function (s) { return s.unsubscribe(); });
+        streamSinkNames.forEach(function (name) { return sinkProxies[name]._c(); });
         signalSinkNames.forEach(function (name) {
-            return sinkProxies[name][Symbol.iterator]().return();
+            var iter = sinkProxies[name][Symbol.iterator]();
+            iter.return();
         });
     };
 }
 function disposeSources(sources) {
     for (var k in sources) {
-        if (sources.hasOwnProperty(k) && sources[k] && sources[k].dispose) {
+        if (sources.hasOwnProperty(k) &&
+            sources[k] &&
+            sources[k].dispose) {
             sources[k].dispose();
         }
     }
@@ -844,16 +915,18 @@ function setup(main, drivers) {
         throw new Error("First argument given to Cycle must be the 'main' " + "function.");
     }
     if (typeof drivers !== "object" || drivers === null) {
-        throw new Error("Second argument given to Cycle must be an object " + "with driver functions as properties.");
+        throw new Error("Second argument given to Cycle must be an object " +
+            "with driver functions as properties.");
     }
     if (isObjectEmpty(drivers)) {
-        throw new Error("Second argument given to Cycle must be an object " + "with at least one driver function declared as a property.");
+        throw new Error("Second argument given to Cycle must be an object " +
+            "with at least one driver function declared as a property.");
     }
     var sinkProxies = makeSinkProxies(drivers);
     var sources = callDrivers(drivers, sinkProxies);
     var adaptedSources = adaptSources(sources);
     var sinks = main(adaptedSources);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
         window.Cyclejs = window.Cyclejs || {};
         window.Cyclejs.sinks = sinks;
     }
@@ -864,7 +937,6 @@ function setup(main, drivers) {
             disposeReplication();
         };
     }
-    ;
     return { sinks: sinks, sources: sources, run: run };
 }
 exports.setup = setup;
@@ -897,11 +969,10 @@ exports.setup = setup;
  */
 function run(main, drivers) {
     // TODO this any below was added here with ysignal changes
-    var _a = setup(main, drivers),
-        run = _a.run,
-        sinks = _a.sinks;
-    if (typeof window !== 'undefined' && window['CyclejsDevTool_startGraphSerializer']) {
-        window['CyclejsDevTool_startGraphSerializer'](sinks);
+    var _a = setup(main, drivers), run = _a.run, sinks = _a.sinks;
+    if (typeof window !== "undefined" &&
+        window["CyclejsDevTool_startGraphSerializer"]) {
+        window["CyclejsDevTool_startGraphSerializer"](sinks);
     }
     return run();
 }
@@ -909,22 +980,794 @@ exports.run = run;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = run;
 
-
-},{"../../xs":15,"../../xy":16,"./adapt":13}],15:[function(require,module,exports){
+},{"./adapt":13,"xstream":31}],15:[function(require,module,exports){
 "use strict";
-
-var __extends = this && this.__extends || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() {
-        this.constructor = d;
+var selectorParser_1 = require('./selectorParser');
+function classNameFromVNode(vNode) {
+    var _a = selectorParser_1.selectorParser(vNode).className, cn = _a === void 0 ? '' : _a;
+    if (!vNode.data) {
+        return cn;
     }
+    var _b = vNode.data, dataClass = _b.class, props = _b.props;
+    if (dataClass) {
+        var c = Object.keys(dataClass)
+            .filter(function (cl) { return dataClass[cl]; });
+        cn += " " + c.join(" ");
+    }
+    if (props && props.className) {
+        cn += " " + props.className;
+    }
+    return cn && cn.trim();
+}
+exports.classNameFromVNode = classNameFromVNode;
+
+},{"./selectorParser":16}],16:[function(require,module,exports){
+"use strict";
+function selectorParser(_a) {
+    var sel = _a.sel;
+    var hashIdx = sel.indexOf('#');
+    var dotIdx = sel.indexOf('.', hashIdx);
+    var hash = hashIdx > 0 ? hashIdx : sel.length;
+    var dot = dotIdx > 0 ? dotIdx : sel.length;
+    var tagName = hashIdx !== -1 || dotIdx !== -1 ?
+        sel.slice(0, Math.min(hash, dot)) :
+        sel;
+    var id = hash < dot ? sel.slice(hash + 1, dot) : void 0;
+    var className = dotIdx > 0 ? sel.slice(dot + 1).replace(/\./g, ' ') : void 0;
+    return {
+        tagName: tagName,
+        id: id,
+        className: className,
+    };
+}
+exports.selectorParser = selectorParser;
+
+},{}],17:[function(require,module,exports){
+"use strict";
+var vnode_1 = require("./vnode");
+var is = require("./is");
+function addNS(data, children, sel) {
+    data.ns = 'http://www.w3.org/2000/svg';
+    if (sel !== 'foreignObject' && children !== undefined) {
+        for (var i = 0; i < children.length; ++i) {
+            var childData = children[i].data;
+            if (childData !== undefined) {
+                addNS(childData, children[i].children, children[i].sel);
+            }
+        }
+    }
+}
+function h(sel, b, c) {
+    var data = {}, children, text, i;
+    if (c !== undefined) {
+        data = b;
+        if (is.array(c)) {
+            children = c;
+        }
+        else if (is.primitive(c)) {
+            text = c;
+        }
+        else if (c && c.sel) {
+            children = [c];
+        }
+    }
+    else if (b !== undefined) {
+        if (is.array(b)) {
+            children = b;
+        }
+        else if (is.primitive(b)) {
+            text = b;
+        }
+        else if (b && b.sel) {
+            children = [b];
+        }
+        else {
+            data = b;
+        }
+    }
+    if (is.array(children)) {
+        for (i = 0; i < children.length; ++i) {
+            if (is.primitive(children[i]))
+                children[i] = vnode_1.vnode(undefined, undefined, undefined, children[i]);
+        }
+    }
+    if (sel[0] === 's' && sel[1] === 'v' && sel[2] === 'g' &&
+        (sel.length === 3 || sel[3] === '.' || sel[3] === '#')) {
+        addNS(data, children, sel);
+    }
+    return vnode_1.vnode(sel, data, children, text, undefined);
+}
+exports.h = h;
+;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = h;
+
+},{"./is":19,"./vnode":27}],18:[function(require,module,exports){
+"use strict";
+function createElement(tagName) {
+    return document.createElement(tagName);
+}
+function createElementNS(namespaceURI, qualifiedName) {
+    return document.createElementNS(namespaceURI, qualifiedName);
+}
+function createTextNode(text) {
+    return document.createTextNode(text);
+}
+function insertBefore(parentNode, newNode, referenceNode) {
+    parentNode.insertBefore(newNode, referenceNode);
+}
+function removeChild(node, child) {
+    node.removeChild(child);
+}
+function appendChild(node, child) {
+    node.appendChild(child);
+}
+function parentNode(node) {
+    return node.parentNode;
+}
+function nextSibling(node) {
+    return node.nextSibling;
+}
+function tagName(elm) {
+    return elm.tagName;
+}
+function setTextContent(node, text) {
+    node.textContent = text;
+}
+exports.htmlDomApi = {
+    createElement: createElement,
+    createElementNS: createElementNS,
+    createTextNode: createTextNode,
+    insertBefore: insertBefore,
+    removeChild: removeChild,
+    appendChild: appendChild,
+    parentNode: parentNode,
+    nextSibling: nextSibling,
+    tagName: tagName,
+    setTextContent: setTextContent,
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.htmlDomApi;
+
+},{}],19:[function(require,module,exports){
+"use strict";
+exports.array = Array.isArray;
+function primitive(s) {
+    return typeof s === 'string' || typeof s === 'number';
+}
+exports.primitive = primitive;
+
+},{}],20:[function(require,module,exports){
+"use strict";
+var NamespaceURIs = {
+    "xlink": "http://www.w3.org/1999/xlink"
+};
+var booleanAttrs = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "compact", "controls", "declare",
+    "default", "defaultchecked", "defaultmuted", "defaultselected", "defer", "disabled", "draggable",
+    "enabled", "formnovalidate", "hidden", "indeterminate", "inert", "ismap", "itemscope", "loop", "multiple",
+    "muted", "nohref", "noresize", "noshade", "novalidate", "nowrap", "open", "pauseonexit", "readonly",
+    "required", "reversed", "scoped", "seamless", "selected", "sortable", "spellcheck", "translate",
+    "truespeed", "typemustmatch", "visible"];
+var booleanAttrsDict = Object.create(null);
+for (var i = 0, len = booleanAttrs.length; i < len; i++) {
+    booleanAttrsDict[booleanAttrs[i]] = true;
+}
+function updateAttrs(oldVnode, vnode) {
+    var key, cur, old, elm = vnode.elm, oldAttrs = oldVnode.data.attrs, attrs = vnode.data.attrs, namespaceSplit;
+    if (!oldAttrs && !attrs)
+        return;
+    if (oldAttrs === attrs)
+        return;
+    oldAttrs = oldAttrs || {};
+    attrs = attrs || {};
+    // update modified attributes, add new attributes
+    for (key in attrs) {
+        cur = attrs[key];
+        old = oldAttrs[key];
+        if (old !== cur) {
+            if (!cur && booleanAttrsDict[key])
+                elm.removeAttribute(key);
+            else {
+                namespaceSplit = key.split(":");
+                if (namespaceSplit.length > 1 && NamespaceURIs.hasOwnProperty(namespaceSplit[0]))
+                    elm.setAttributeNS(NamespaceURIs[namespaceSplit[0]], key, cur);
+                else
+                    elm.setAttribute(key, cur);
+            }
+        }
+    }
+    //remove removed attributes
+    // use `in` operator since the previous `for` iteration uses it (.i.e. add even attributes with undefined value)
+    // the other option is to remove all attributes with value == undefined
+    for (key in oldAttrs) {
+        if (!(key in attrs)) {
+            elm.removeAttribute(key);
+        }
+    }
+}
+exports.attributesModule = { create: updateAttrs, update: updateAttrs };
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.attributesModule;
+
+},{}],21:[function(require,module,exports){
+"use strict";
+function updateClass(oldVnode, vnode) {
+    var cur, name, elm = vnode.elm, oldClass = oldVnode.data.class, klass = vnode.data.class;
+    if (!oldClass && !klass)
+        return;
+    if (oldClass === klass)
+        return;
+    oldClass = oldClass || {};
+    klass = klass || {};
+    for (name in oldClass) {
+        if (!klass[name]) {
+            elm.classList.remove(name);
+        }
+    }
+    for (name in klass) {
+        cur = klass[name];
+        if (cur !== oldClass[name]) {
+            elm.classList[cur ? 'add' : 'remove'](name);
+        }
+    }
+}
+exports.classModule = { create: updateClass, update: updateClass };
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.classModule;
+
+},{}],22:[function(require,module,exports){
+"use strict";
+function updateDataset(oldVnode, vnode) {
+    var elm = vnode.elm, oldDataset = oldVnode.data.dataset, dataset = vnode.data.dataset, key;
+    if (!oldDataset && !dataset)
+        return;
+    if (oldDataset === dataset)
+        return;
+    oldDataset = oldDataset || {};
+    dataset = dataset || {};
+    for (key in oldDataset) {
+        if (!dataset[key]) {
+            delete elm.dataset[key];
+        }
+    }
+    for (key in dataset) {
+        if (oldDataset[key] !== dataset[key]) {
+            elm.dataset[key] = dataset[key];
+        }
+    }
+}
+exports.datasetModule = { create: updateDataset, update: updateDataset };
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.datasetModule;
+
+},{}],23:[function(require,module,exports){
+"use strict";
+function updateProps(oldVnode, vnode) {
+    var key, cur, old, elm = vnode.elm, oldProps = oldVnode.data.props, props = vnode.data.props;
+    if (!oldProps && !props)
+        return;
+    if (oldProps === props)
+        return;
+    oldProps = oldProps || {};
+    props = props || {};
+    for (key in oldProps) {
+        if (!props[key]) {
+            delete elm[key];
+        }
+    }
+    for (key in props) {
+        cur = props[key];
+        old = oldProps[key];
+        if (old !== cur && (key !== 'value' || elm[key] !== cur)) {
+            elm[key] = cur;
+        }
+    }
+}
+exports.propsModule = { create: updateProps, update: updateProps };
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.propsModule;
+
+},{}],24:[function(require,module,exports){
+"use strict";
+var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
+var nextFrame = function (fn) { raf(function () { raf(fn); }); };
+function setNextFrame(obj, prop, val) {
+    nextFrame(function () { obj[prop] = val; });
+}
+function updateStyle(oldVnode, vnode) {
+    var cur, name, elm = vnode.elm, oldStyle = oldVnode.data.style, style = vnode.data.style;
+    if (!oldStyle && !style)
+        return;
+    if (oldStyle === style)
+        return;
+    oldStyle = oldStyle || {};
+    style = style || {};
+    var oldHasDel = 'delayed' in oldStyle;
+    for (name in oldStyle) {
+        if (!style[name]) {
+            if (name.startsWith('--')) {
+                elm.style.removeProperty(name);
+            }
+            else {
+                elm.style[name] = '';
+            }
+        }
+    }
+    for (name in style) {
+        cur = style[name];
+        if (name === 'delayed') {
+            for (name in style.delayed) {
+                cur = style.delayed[name];
+                if (!oldHasDel || cur !== oldStyle.delayed[name]) {
+                    setNextFrame(elm.style, name, cur);
+                }
+            }
+        }
+        else if (name !== 'remove' && cur !== oldStyle[name]) {
+            if (name.startsWith('--')) {
+                elm.style.setProperty(name, cur);
+            }
+            else {
+                elm.style[name] = cur;
+            }
+        }
+    }
+}
+function applyDestroyStyle(vnode) {
+    var style, name, elm = vnode.elm, s = vnode.data.style;
+    if (!s || !(style = s.destroy))
+        return;
+    for (name in style) {
+        elm.style[name] = style[name];
+    }
+}
+function applyRemoveStyle(vnode, rm) {
+    var s = vnode.data.style;
+    if (!s || !s.remove) {
+        rm();
+        return;
+    }
+    var name, elm = vnode.elm, i = 0, compStyle, style = s.remove, amount = 0, applied = [];
+    for (name in style) {
+        applied.push(name);
+        elm.style[name] = style[name];
+    }
+    compStyle = getComputedStyle(elm);
+    var props = compStyle['transition-property'].split(', ');
+    for (; i < props.length; ++i) {
+        if (applied.indexOf(props[i]) !== -1)
+            amount++;
+    }
+    elm.addEventListener('transitionend', function (ev) {
+        if (ev.target === elm)
+            --amount;
+        if (amount === 0)
+            rm();
+    });
+}
+exports.styleModule = {
+    create: updateStyle,
+    update: updateStyle,
+    destroy: applyDestroyStyle,
+    remove: applyRemoveStyle
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.styleModule;
+
+},{}],25:[function(require,module,exports){
+"use strict";
+var vnode_1 = require("./vnode");
+var is = require("./is");
+var htmldomapi_1 = require("./htmldomapi");
+function isUndef(s) { return s === undefined; }
+function isDef(s) { return s !== undefined; }
+var emptyNode = vnode_1.default('', {}, [], undefined, undefined);
+function sameVnode(vnode1, vnode2) {
+    return vnode1.key === vnode2.key && vnode1.sel === vnode2.sel;
+}
+function isVnode(vnode) {
+    return vnode.sel !== undefined;
+}
+function createKeyToOldIdx(children, beginIdx, endIdx) {
+    var i, map = {}, key;
+    for (i = beginIdx; i <= endIdx; ++i) {
+        key = children[i].key;
+        if (key !== undefined)
+            map[key] = i;
+    }
+    return map;
+}
+var hooks = ['create', 'update', 'remove', 'destroy', 'pre', 'post'];
+var h_1 = require("./h");
+exports.h = h_1.h;
+var thunk_1 = require("./thunk");
+exports.thunk = thunk_1.thunk;
+function init(modules, domApi) {
+    var i, j, cbs = {};
+    var api = domApi !== undefined ? domApi : htmldomapi_1.default;
+    for (i = 0; i < hooks.length; ++i) {
+        cbs[hooks[i]] = [];
+        for (j = 0; j < modules.length; ++j) {
+            var hook = modules[j][hooks[i]];
+            if (hook !== undefined) {
+                cbs[hooks[i]].push(hook);
+            }
+        }
+    }
+    function emptyNodeAt(elm) {
+        var id = elm.id ? '#' + elm.id : '';
+        var c = elm.className ? '.' + elm.className.split(' ').join('.') : '';
+        return vnode_1.default(api.tagName(elm).toLowerCase() + id + c, {}, [], undefined, elm);
+    }
+    function createRmCb(childElm, listeners) {
+        return function rmCb() {
+            if (--listeners === 0) {
+                var parent_1 = api.parentNode(childElm);
+                api.removeChild(parent_1, childElm);
+            }
+        };
+    }
+    function createElm(vnode, insertedVnodeQueue) {
+        var i, data = vnode.data;
+        if (data !== undefined) {
+            if (isDef(i = data.hook) && isDef(i = i.init)) {
+                i(vnode);
+                data = vnode.data;
+            }
+        }
+        var children = vnode.children, sel = vnode.sel;
+        if (sel !== undefined) {
+            // Parse selector
+            var hashIdx = sel.indexOf('#');
+            var dotIdx = sel.indexOf('.', hashIdx);
+            var hash = hashIdx > 0 ? hashIdx : sel.length;
+            var dot = dotIdx > 0 ? dotIdx : sel.length;
+            var tag = hashIdx !== -1 || dotIdx !== -1 ? sel.slice(0, Math.min(hash, dot)) : sel;
+            var elm = vnode.elm = isDef(data) && isDef(i = data.ns) ? api.createElementNS(i, tag)
+                : api.createElement(tag);
+            if (hash < dot)
+                elm.id = sel.slice(hash + 1, dot);
+            if (dotIdx > 0)
+                elm.className = sel.slice(dot + 1).replace(/\./g, ' ');
+            if (is.array(children)) {
+                for (i = 0; i < children.length; ++i) {
+                    api.appendChild(elm, createElm(children[i], insertedVnodeQueue));
+                }
+            }
+            else if (is.primitive(vnode.text)) {
+                api.appendChild(elm, api.createTextNode(vnode.text));
+            }
+            for (i = 0; i < cbs.create.length; ++i)
+                cbs.create[i](emptyNode, vnode);
+            i = vnode.data.hook; // Reuse variable
+            if (isDef(i)) {
+                if (i.create)
+                    i.create(emptyNode, vnode);
+                if (i.insert)
+                    insertedVnodeQueue.push(vnode);
+            }
+        }
+        else {
+            vnode.elm = api.createTextNode(vnode.text);
+        }
+        return vnode.elm;
+    }
+    function addVnodes(parentElm, before, vnodes, startIdx, endIdx, insertedVnodeQueue) {
+        for (; startIdx <= endIdx; ++startIdx) {
+            api.insertBefore(parentElm, createElm(vnodes[startIdx], insertedVnodeQueue), before);
+        }
+    }
+    function invokeDestroyHook(vnode) {
+        var i, j, data = vnode.data;
+        if (data !== undefined) {
+            if (isDef(i = data.hook) && isDef(i = i.destroy))
+                i(vnode);
+            for (i = 0; i < cbs.destroy.length; ++i)
+                cbs.destroy[i](vnode);
+            if (vnode.children !== undefined) {
+                for (j = 0; j < vnode.children.length; ++j) {
+                    i = vnode.children[j];
+                    if (typeof i !== "string") {
+                        invokeDestroyHook(i);
+                    }
+                }
+            }
+        }
+    }
+    function removeVnodes(parentElm, vnodes, startIdx, endIdx) {
+        for (; startIdx <= endIdx; ++startIdx) {
+            var i_1 = void 0, listeners = void 0, rm = void 0, ch = vnodes[startIdx];
+            if (isDef(ch)) {
+                if (isDef(ch.sel)) {
+                    invokeDestroyHook(ch);
+                    listeners = cbs.remove.length + 1;
+                    rm = createRmCb(ch.elm, listeners);
+                    for (i_1 = 0; i_1 < cbs.remove.length; ++i_1)
+                        cbs.remove[i_1](ch, rm);
+                    if (isDef(i_1 = ch.data) && isDef(i_1 = i_1.hook) && isDef(i_1 = i_1.remove)) {
+                        i_1(ch, rm);
+                    }
+                    else {
+                        rm();
+                    }
+                }
+                else {
+                    api.removeChild(parentElm, ch.elm);
+                }
+            }
+        }
+    }
+    function updateChildren(parentElm, oldCh, newCh, insertedVnodeQueue) {
+        var oldStartIdx = 0, newStartIdx = 0;
+        var oldEndIdx = oldCh.length - 1;
+        var oldStartVnode = oldCh[0];
+        var oldEndVnode = oldCh[oldEndIdx];
+        var newEndIdx = newCh.length - 1;
+        var newStartVnode = newCh[0];
+        var newEndVnode = newCh[newEndIdx];
+        var oldKeyToIdx;
+        var idxInOld;
+        var elmToMove;
+        var before;
+        while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+            if (isUndef(oldStartVnode)) {
+                oldStartVnode = oldCh[++oldStartIdx]; // Vnode has been moved left
+            }
+            else if (isUndef(oldEndVnode)) {
+                oldEndVnode = oldCh[--oldEndIdx];
+            }
+            else if (sameVnode(oldStartVnode, newStartVnode)) {
+                patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue);
+                oldStartVnode = oldCh[++oldStartIdx];
+                newStartVnode = newCh[++newStartIdx];
+            }
+            else if (sameVnode(oldEndVnode, newEndVnode)) {
+                patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue);
+                oldEndVnode = oldCh[--oldEndIdx];
+                newEndVnode = newCh[--newEndIdx];
+            }
+            else if (sameVnode(oldStartVnode, newEndVnode)) {
+                patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue);
+                api.insertBefore(parentElm, oldStartVnode.elm, api.nextSibling(oldEndVnode.elm));
+                oldStartVnode = oldCh[++oldStartIdx];
+                newEndVnode = newCh[--newEndIdx];
+            }
+            else if (sameVnode(oldEndVnode, newStartVnode)) {
+                patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue);
+                api.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm);
+                oldEndVnode = oldCh[--oldEndIdx];
+                newStartVnode = newCh[++newStartIdx];
+            }
+            else {
+                if (oldKeyToIdx === undefined) {
+                    oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx);
+                }
+                idxInOld = oldKeyToIdx[newStartVnode.key];
+                if (isUndef(idxInOld)) {
+                    api.insertBefore(parentElm, createElm(newStartVnode, insertedVnodeQueue), oldStartVnode.elm);
+                    newStartVnode = newCh[++newStartIdx];
+                }
+                else {
+                    elmToMove = oldCh[idxInOld];
+                    if (elmToMove.sel !== newStartVnode.sel) {
+                        api.insertBefore(parentElm, createElm(newStartVnode, insertedVnodeQueue), oldStartVnode.elm);
+                    }
+                    else {
+                        patchVnode(elmToMove, newStartVnode, insertedVnodeQueue);
+                        oldCh[idxInOld] = undefined;
+                        api.insertBefore(parentElm, elmToMove.elm, oldStartVnode.elm);
+                    }
+                    newStartVnode = newCh[++newStartIdx];
+                }
+            }
+        }
+        if (oldStartIdx > oldEndIdx) {
+            before = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm;
+            addVnodes(parentElm, before, newCh, newStartIdx, newEndIdx, insertedVnodeQueue);
+        }
+        else if (newStartIdx > newEndIdx) {
+            removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx);
+        }
+    }
+    function patchVnode(oldVnode, vnode, insertedVnodeQueue) {
+        var i, hook;
+        if (isDef(i = vnode.data) && isDef(hook = i.hook) && isDef(i = hook.prepatch)) {
+            i(oldVnode, vnode);
+        }
+        var elm = vnode.elm = oldVnode.elm;
+        var oldCh = oldVnode.children;
+        var ch = vnode.children;
+        if (oldVnode === vnode)
+            return;
+        if (vnode.data !== undefined) {
+            for (i = 0; i < cbs.update.length; ++i)
+                cbs.update[i](oldVnode, vnode);
+            i = vnode.data.hook;
+            if (isDef(i) && isDef(i = i.update))
+                i(oldVnode, vnode);
+        }
+        if (isUndef(vnode.text)) {
+            if (isDef(oldCh) && isDef(ch)) {
+                if (oldCh !== ch)
+                    updateChildren(elm, oldCh, ch, insertedVnodeQueue);
+            }
+            else if (isDef(ch)) {
+                if (isDef(oldVnode.text))
+                    api.setTextContent(elm, '');
+                addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue);
+            }
+            else if (isDef(oldCh)) {
+                removeVnodes(elm, oldCh, 0, oldCh.length - 1);
+            }
+            else if (isDef(oldVnode.text)) {
+                api.setTextContent(elm, '');
+            }
+        }
+        else if (oldVnode.text !== vnode.text) {
+            api.setTextContent(elm, vnode.text);
+        }
+        if (isDef(hook) && isDef(i = hook.postpatch)) {
+            i(oldVnode, vnode);
+        }
+    }
+    return function patch(oldVnode, vnode) {
+        var i, elm, parent;
+        var insertedVnodeQueue = [];
+        for (i = 0; i < cbs.pre.length; ++i)
+            cbs.pre[i]();
+        if (!isVnode(oldVnode)) {
+            oldVnode = emptyNodeAt(oldVnode);
+        }
+        if (sameVnode(oldVnode, vnode)) {
+            patchVnode(oldVnode, vnode, insertedVnodeQueue);
+        }
+        else {
+            elm = oldVnode.elm;
+            parent = api.parentNode(elm);
+            createElm(vnode, insertedVnodeQueue);
+            if (parent !== null) {
+                api.insertBefore(parent, vnode.elm, api.nextSibling(elm));
+                removeVnodes(parent, [oldVnode], 0, 0);
+            }
+        }
+        for (i = 0; i < insertedVnodeQueue.length; ++i) {
+            insertedVnodeQueue[i].data.hook.insert(insertedVnodeQueue[i]);
+        }
+        for (i = 0; i < cbs.post.length; ++i)
+            cbs.post[i]();
+        return vnode;
+    };
+}
+exports.init = init;
+
+},{"./h":17,"./htmldomapi":18,"./is":19,"./thunk":26,"./vnode":27}],26:[function(require,module,exports){
+"use strict";
+var h_1 = require("./h");
+function copyToThunk(vnode, thunk) {
+    thunk.elm = vnode.elm;
+    vnode.data.fn = thunk.data.fn;
+    vnode.data.args = thunk.data.args;
+    thunk.data = vnode.data;
+    thunk.children = vnode.children;
+    thunk.text = vnode.text;
+    thunk.elm = vnode.elm;
+}
+function init(thunk) {
+    var cur = thunk.data;
+    var vnode = cur.fn.apply(undefined, cur.args);
+    copyToThunk(vnode, thunk);
+}
+function prepatch(oldVnode, thunk) {
+    var i, old = oldVnode.data, cur = thunk.data;
+    var oldArgs = old.args, args = cur.args;
+    if (old.fn !== cur.fn || oldArgs.length !== args.length) {
+        copyToThunk(cur.fn.apply(undefined, args), thunk);
+    }
+    for (i = 0; i < args.length; ++i) {
+        if (oldArgs[i] !== args[i]) {
+            copyToThunk(cur.fn.apply(undefined, args), thunk);
+            return;
+        }
+    }
+    copyToThunk(oldVnode, thunk);
+}
+exports.thunk = function thunk(sel, key, fn, args) {
+    if (args === undefined) {
+        args = fn;
+        fn = key;
+        key = undefined;
+    }
+    return h_1.h(sel, {
+        key: key,
+        hook: { init: init, prepatch: prepatch },
+        fn: fn,
+        args: args
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.thunk;
+
+},{"./h":17}],27:[function(require,module,exports){
+"use strict";
+function vnode(sel, data, children, text, elm) {
+    var key = data === undefined ? undefined : data.key;
+    return { sel: sel, data: data, children: children,
+        text: text, elm: elm, key: key };
+}
+exports.vnode = vnode;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = vnode;
+
+},{}],28:[function(require,module,exports){
+module.exports = require('./lib/index');
+
+},{"./lib/index":29}],29:[function(require,module,exports){
+(function (global){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _ponyfill = require('./ponyfill');
+
+var _ponyfill2 = _interopRequireDefault(_ponyfill);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var root; /* global window */
+
+
+if (typeof self !== 'undefined') {
+  root = self;
+} else if (typeof window !== 'undefined') {
+  root = window;
+} else if (typeof global !== 'undefined') {
+  root = global;
+} else if (typeof module !== 'undefined') {
+  root = module;
+} else {
+  root = Function('return this')();
+}
+
+var result = (0, _ponyfill2['default'])(root);
+exports['default'] = result;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./ponyfill":30}],30:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports['default'] = symbolObservablePonyfill;
+function symbolObservablePonyfill(root) {
+	var result;
+	var _Symbol = root.Symbol;
+
+	if (typeof _Symbol === 'function') {
+		if (_Symbol.observable) {
+			result = _Symbol.observable;
+		} else {
+			result = _Symbol('observable');
+			_Symbol.observable = result;
+		}
+	} else {
+		result = '@@observable';
+	}
+
+	return result;
+};
+},{}],31:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var ys_1 = require("./ys");
 var symbol_observable_1 = require("symbol-observable");
 var NO = {};
 exports.NO = NO;
-function noop() {}
+function noop() { }
 function copy(a) {
     var l = a.length;
     var b = Array(l);
@@ -941,7 +1784,8 @@ function and(f1, f2) {
 function _try(c, t, u) {
     try {
         return c.f(t);
-    } catch (e) {
+    }
+    catch (e) {
         u._e(e);
         return NO;
     }
@@ -962,7 +1806,7 @@ function internalizeProducer(producer) {
     };
     producer._stop = producer.stop;
 }
-var StreamSub = function () {
+var StreamSub = (function () {
     function StreamSub(_stream, _listener) {
         this._stream = _stream;
         this._listener = _listener;
@@ -971,8 +1815,8 @@ var StreamSub = function () {
         this._stream.removeListener(this._listener);
     };
     return StreamSub;
-}();
-var Observer = function () {
+}());
+var Observer = (function () {
     function Observer(_listener) {
         this._listener = _listener;
     }
@@ -986,10 +1830,10 @@ var Observer = function () {
         this._listener._c();
     };
     return Observer;
-}();
-var FromObservable = function () {
+}());
+var FromObservable = (function () {
     function FromObservable(observable) {
-        this.type = 'fromObservable';
+        this.type = "fromObservable";
         this.ins = observable;
         this.active = false;
     }
@@ -997,17 +1841,19 @@ var FromObservable = function () {
         this.out = out;
         this.active = true;
         this._sub = this.ins.subscribe(new Observer(out));
-        if (!this.active) this._sub.unsubscribe();
+        if (!this.active)
+            this._sub.unsubscribe();
     };
     FromObservable.prototype._stop = function () {
-        if (this._sub) this._sub.unsubscribe();
+        if (this._sub)
+            this._sub.unsubscribe();
         this.active = false;
     };
     return FromObservable;
-}();
-var Merge = function () {
+}());
+var Merge = (function () {
     function Merge(insArr) {
-        this.type = 'merge';
+        this.type = "merge";
         this.insArr = insArr;
         this.out = NO;
         this.ac = 0;
@@ -1031,24 +1877,27 @@ var Merge = function () {
     };
     Merge.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._n(t);
     };
     Merge.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Merge.prototype._c = function () {
         if (--this.ac <= 0) {
             var u = this.out;
-            if (u === NO) return;
+            if (u === NO)
+                return;
             u._c();
         }
     };
     return Merge;
-}();
-var CombineListener = function () {
+}());
+var CombineListener = (function () {
     function CombineListener(i, out, p) {
         this.i = i;
         this.out = out;
@@ -1056,30 +1905,32 @@ var CombineListener = function () {
         p.ils.push(this);
     }
     CombineListener.prototype._n = function (t) {
-        var p = this.p,
-            out = this.out;
-        if (out === NO) return;
+        var p = this.p, out = this.out;
+        if (out === NO)
+            return;
         if (p.up(t, this.i)) {
             out._n(p.vals);
         }
     };
     CombineListener.prototype._e = function (err) {
         var out = this.out;
-        if (out === NO) return;
+        if (out === NO)
+            return;
         out._e(err);
     };
     CombineListener.prototype._c = function () {
         var p = this.p;
-        if (p.out === NO) return;
+        if (p.out === NO)
+            return;
         if (--p.Nc === 0) {
             p.out._c();
         }
     };
     return CombineListener;
-}();
-var Combine = function () {
+}());
+var Combine = (function () {
     function Combine(insArr) {
-        this.type = 'combine';
+        this.type = "combine";
         this.insArr = insArr;
         this.out = NO;
         this.ils = [];
@@ -1095,12 +1946,13 @@ var Combine = function () {
     Combine.prototype._start = function (out) {
         this.out = out;
         var s = this.insArr;
-        var n = this.Nc = this.Nn = s.length;
-        var vals = this.vals = new Array(n);
+        var n = (this.Nc = this.Nn = s.length);
+        var vals = (this.vals = new Array(n));
         if (n === 0) {
             out._n([]);
             out._c();
-        } else {
+        }
+        else {
             for (var i = 0; i < n; i++) {
                 vals[i] = NO;
                 s[i]._add(new CombineListener(i, out, this));
@@ -1119,10 +1971,10 @@ var Combine = function () {
         this.vals = [];
     };
     return Combine;
-}();
-var FromArray = function () {
+}());
+var FromArray = (function () {
     function FromArray(a) {
-        this.type = 'fromArray';
+        this.type = "fromArray";
         this.a = a;
     }
     FromArray.prototype._start = function (out) {
@@ -1132,26 +1984,28 @@ var FromArray = function () {
         }
         out._c();
     };
-    FromArray.prototype._stop = function () {};
+    FromArray.prototype._stop = function () { };
     return FromArray;
-}();
-var FromPromise = function () {
+}());
+var FromPromise = (function () {
     function FromPromise(p) {
-        this.type = 'fromPromise';
+        this.type = "fromPromise";
         this.on = false;
         this.p = p;
     }
     FromPromise.prototype._start = function (out) {
         var prod = this;
         this.on = true;
-        this.p.then(function (v) {
+        this.p
+            .then(function (v) {
             if (prod.on) {
                 out._n(v);
                 out._c();
             }
         }, function (e) {
             out._e(e);
-        }).then(noop, function (err) {
+        })
+            .then(noop, function (err) {
             setTimeout(function () {
                 throw err;
             });
@@ -1161,10 +2015,10 @@ var FromPromise = function () {
         this.on = false;
     };
     return FromPromise;
-}();
-var Periodic = function () {
+}());
+var Periodic = (function () {
     function Periodic(period) {
-        this.type = 'periodic';
+        this.type = "periodic";
         this.period = period;
         this.intervalID = -1;
         this.i = 0;
@@ -1177,22 +2031,24 @@ var Periodic = function () {
         this.intervalID = setInterval(intervalHandler, this.period);
     };
     Periodic.prototype._stop = function () {
-        if (this.intervalID !== -1) clearInterval(this.intervalID);
+        if (this.intervalID !== -1)
+            clearInterval(this.intervalID);
         this.intervalID = -1;
         this.i = 0;
     };
     return Periodic;
-}();
-var Debug = function () {
+}());
+var Debug = (function () {
     function Debug(ins, arg) {
-        this.type = 'debug';
+        this.type = "debug";
         this.ins = ins;
         this.out = NO;
         this.s = noop;
-        this.l = '';
-        if (typeof arg === 'string') {
+        this.l = "";
+        if (typeof arg === "string") {
             this.l = arg;
-        } else if (typeof arg === 'function') {
+        }
+        else if (typeof arg === "function") {
             this.s = arg;
         }
     }
@@ -1206,37 +2062,42 @@ var Debug = function () {
     };
     Debug.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
-        var s = this.s,
-            l = this.l;
+        if (u === NO)
+            return;
+        var s = this.s, l = this.l;
         if (s !== noop) {
             try {
                 s(t);
-            } catch (e) {
+            }
+            catch (e) {
                 u._e(e);
             }
-        } else if (l) {
-            console.log(l + ':', t);
-        } else {
+        }
+        else if (l) {
+            console.log(l + ":", t);
+        }
+        else {
             console.log(t);
         }
         u._n(t);
     };
     Debug.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Debug.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return Debug;
-}();
-var Drop = function () {
+}());
+var Drop = (function () {
     function Drop(max, ins) {
-        this.type = 'drop';
+        this.type = "drop";
         this.ins = ins;
         this.out = NO;
         this.max = max;
@@ -1253,22 +2114,26 @@ var Drop = function () {
     };
     Drop.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
-        if (this.dropped++ >= this.max) u._n(t);
+        if (u === NO)
+            return;
+        if (this.dropped++ >= this.max)
+            u._n(t);
     };
     Drop.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Drop.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return Drop;
-}();
-var EndWhenListener = function () {
+}());
+var EndWhenListener = (function () {
     function EndWhenListener(out, op) {
         this.out = out;
         this.op = op;
@@ -1283,10 +2148,10 @@ var EndWhenListener = function () {
         this.op.end();
     };
     return EndWhenListener;
-}();
-var EndWhen = function () {
+}());
+var EndWhen = (function () {
     function EndWhen(o, ins) {
-        this.type = 'endWhen';
+        this.type = "endWhen";
         this.ins = ins;
         this.out = NO;
         this.o = o;
@@ -1294,7 +2159,7 @@ var EndWhen = function () {
     }
     EndWhen.prototype._start = function (out) {
         this.out = out;
-        this.o._add(this.oil = new EndWhenListener(out, this));
+        this.o._add((this.oil = new EndWhenListener(out, this)));
         this.ins._add(this);
     };
     EndWhen.prototype._stop = function () {
@@ -1305,27 +2170,30 @@ var EndWhen = function () {
     };
     EndWhen.prototype.end = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     EndWhen.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._n(t);
     };
     EndWhen.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     EndWhen.prototype._c = function () {
         this.end();
     };
     return EndWhen;
-}();
-var Filter = function () {
+}());
+var Filter = (function () {
     function Filter(passes, ins) {
-        this.type = 'filter';
+        this.type = "filter";
         this.ins = ins;
         this.out = NO;
         this.f = passes;
@@ -1340,24 +2208,28 @@ var Filter = function () {
     };
     Filter.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         var r = _try(this, t, u);
-        if (r === NO || !r) return;
+        if (r === NO || !r)
+            return;
         u._n(t);
     };
     Filter.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Filter.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return Filter;
-}();
-var FlattenListener = function () {
+}());
+var FlattenListener = (function () {
     function FlattenListener(out, op) {
         this.out = out;
         this.op = op;
@@ -1373,10 +2245,10 @@ var FlattenListener = function () {
         this.op.less();
     };
     return FlattenListener;
-}();
-var Flatten = function () {
+}());
+var Flatten = (function () {
     function Flatten(ins) {
-        this.type = 'flatten';
+        this.type = "flatten";
         this.ins = ins;
         this.out = NO;
         this.open = true;
@@ -1392,7 +2264,8 @@ var Flatten = function () {
     };
     Flatten.prototype._stop = function () {
         this.ins._remove(this);
-        if (this.inner !== NO) this.inner._remove(this.il);
+        if (this.inner !== NO)
+            this.inner._remove(this.il);
         this.out = NO;
         this.open = true;
         this.inner = NO;
@@ -1400,21 +2273,24 @@ var Flatten = function () {
     };
     Flatten.prototype.less = function () {
         var u = this.out;
-        if (u === NO) return;
-        if (!this.open && this.inner === NO) u._c();
+        if (u === NO)
+            return;
+        if (!this.open && this.inner === NO)
+            u._c();
     };
     Flatten.prototype._n = function (s) {
         var u = this.out;
-        if (u === NO) return;
-        var _a = this,
-            inner = _a.inner,
-            il = _a.il;
-        if (inner !== NO && il !== NO_IL) inner._remove(il);
-        (this.inner = s)._add(this.il = new FlattenListener(u, this));
+        if (u === NO)
+            return;
+        var _a = this, inner = _a.inner, il = _a.il;
+        if (inner !== NO && il !== NO_IL)
+            inner._remove(il);
+        (this.inner = s)._add((this.il = new FlattenListener(u, this)));
     };
     Flatten.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Flatten.prototype._c = function () {
@@ -1422,16 +2298,14 @@ var Flatten = function () {
         this.less();
     };
     return Flatten;
-}();
-var Fold = function () {
+}());
+var Fold = (function () {
     function Fold(f, seed, ins) {
         var _this = this;
-        this.type = 'fold';
+        this.type = "fold";
         this.ins = ins;
         this.out = NO;
-        this.f = function (t) {
-            return f(_this.acc, t);
-        };
+        this.f = function (t) { return f(_this.acc, t); };
         this.acc = this.seed = seed;
     }
     Fold.prototype._start = function (out) {
@@ -1447,26 +2321,30 @@ var Fold = function () {
     };
     Fold.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         var r = _try(this, t, u);
-        if (r === NO) return;
-        u._n(this.acc = r);
+        if (r === NO)
+            return;
+        u._n((this.acc = r));
     };
     Fold.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Fold.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return Fold;
-}();
-var Last = function () {
+}());
+var Last = (function () {
     function Last(ins) {
-        this.type = 'last';
+        this.type = "last";
         this.ins = ins;
         this.out = NO;
         this.has = false;
@@ -1488,22 +2366,25 @@ var Last = function () {
     };
     Last.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Last.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         if (this.has) {
             u._n(this.val);
             u._c();
-        } else {
-            u._e('TODO show proper error');
+        }
+        else {
+            u._e("TODO show proper error");
         }
     };
     return Last;
-}();
-var MapFlattenListener = function () {
+}());
+var MapFlattenListener = (function () {
     function MapFlattenListener(out, op) {
         this.out = out;
         this.op = op;
@@ -1519,8 +2400,8 @@ var MapFlattenListener = function () {
         this.op.less();
     };
     return MapFlattenListener;
-}();
-var MapFlatten = function () {
+}());
+var MapFlatten = (function () {
     function MapFlatten(mapOp) {
         this.type = mapOp.type + "+flatten";
         this.ins = mapOp.ins;
@@ -1539,7 +2420,8 @@ var MapFlatten = function () {
     };
     MapFlatten.prototype._stop = function () {
         this.mapOp.ins._remove(this);
-        if (this.inner !== NO) this.inner._remove(this.il);
+        if (this.inner !== NO)
+            this.inner._remove(this.il);
         this.out = NO;
         this.inner = NO;
         this.il = NO_IL;
@@ -1547,24 +2429,27 @@ var MapFlatten = function () {
     MapFlatten.prototype.less = function () {
         if (!this.open && this.inner === NO) {
             var u = this.out;
-            if (u === NO) return;
+            if (u === NO)
+                return;
             u._c();
         }
     };
     MapFlatten.prototype._n = function (v) {
         var u = this.out;
-        if (u === NO) return;
-        var _a = this,
-            inner = _a.inner,
-            il = _a.il;
+        if (u === NO)
+            return;
+        var _a = this, inner = _a.inner, il = _a.il;
         var s = _try(this.mapOp, v, u);
-        if (s === NO) return;
-        if (inner !== NO && il !== NO_IL) inner._remove(il);
-        (this.inner = s)._add(this.il = new MapFlattenListener(u, this));
+        if (s === NO)
+            return;
+        if (inner !== NO && il !== NO_IL)
+            inner._remove(il);
+        (this.inner = s)._add((this.il = new MapFlattenListener(u, this)));
     };
     MapFlatten.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     MapFlatten.prototype._c = function () {
@@ -1572,10 +2457,10 @@ var MapFlatten = function () {
         this.less();
     };
     return MapFlatten;
-}();
-var MapOp = function () {
+}());
+var MapOp = (function () {
     function MapOp(project, ins) {
-        this.type = 'map';
+        this.type = "map";
         this.ins = ins;
         this.out = NO;
         this.f = project;
@@ -1590,44 +2475,51 @@ var MapOp = function () {
     };
     MapOp.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         var r = _try(this, t, u);
-        if (r === NO) return;
+        if (r === NO)
+            return;
         u._n(r);
     };
     MapOp.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     MapOp.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return MapOp;
-}();
-var FilterMapFusion = function (_super) {
+}());
+var FilterMapFusion = (function (_super) {
     __extends(FilterMapFusion, _super);
     function FilterMapFusion(passes, project, ins) {
         var _this = _super.call(this, project, ins) || this;
-        _this.type = 'filter+map';
+        _this.type = "filter+map";
         _this.passes = passes;
         return _this;
     }
     FilterMapFusion.prototype._n = function (t) {
-        if (!this.passes(t)) return;
+        if (!this.passes(t))
+            return;
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         var r = _try(this, t, u);
-        if (r === NO) return;
+        if (r === NO)
+            return;
         u._n(r);
     };
     return FilterMapFusion;
-}(MapOp);
-var Remember = function () {
+}(MapOp));
+var Remember = (function () {
     function Remember(ins) {
-        this.type = 'remember';
+        this.type = "remember";
         this.ins = ins;
         this.out = NO;
     }
@@ -1640,10 +2532,10 @@ var Remember = function () {
         this.out = NO;
     };
     return Remember;
-}();
-var ReplaceError = function () {
+}());
+var ReplaceError = (function () {
     function ReplaceError(replacer, ins) {
-        this.type = 'replaceError';
+        this.type = "replaceError";
         this.ins = ins;
         this.out = NO;
         this.f = replacer;
@@ -1658,29 +2550,88 @@ var ReplaceError = function () {
     };
     ReplaceError.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._n(t);
     };
     ReplaceError.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         try {
             this.ins._remove(this);
             (this.ins = this.f(err))._add(this);
-        } catch (e) {
+        }
+        catch (e) {
             u._e(e);
         }
     };
     ReplaceError.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return ReplaceError;
-}();
-var StartWith = function () {
+}());
+var Sample = (function () {
+    function Sample(signal, ins) {
+        this.type = "sample";
+        this.ins = ins;
+        this.out = NO;
+        this.sig = signal;
+        this.itr = NO;
+    }
+    Sample.prototype._start = function (out) {
+        this.out = out;
+        this.itr = this.sig[Symbol.iterator]();
+        this.ins._add(this);
+    };
+    Sample.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+        // this.itr.return();
+        this.itr = NO;
+    };
+    Sample.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO) {
+            return;
+        }
+        var r;
+        try {
+            r = this.itr.next();
+        }
+        catch (e) {
+            u._e(e);
+            return;
+        }
+        if (r.done) {
+            u._c();
+        }
+        else {
+            u._n(r.value);
+        }
+    };
+    Sample.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO) {
+            return;
+        }
+        u._e(err);
+    };
+    Sample.prototype._c = function () {
+        var u = this.out;
+        if (u === NO) {
+            return;
+        }
+        u._c();
+    };
+    return Sample;
+}());
+var StartWith = (function () {
     function StartWith(ins, val) {
-        this.type = 'startWith';
+        this.type = "startWith";
         this.ins = ins;
         this.out = NO;
         this.val = val;
@@ -1695,10 +2646,10 @@ var StartWith = function () {
         this.out = NO;
     };
     return StartWith;
-}();
-var Take = function () {
+}());
+var Take = (function () {
     function Take(max, ins) {
-        this.type = 'take';
+        this.type = "take";
         this.ins = ins;
         this.out = NO;
         this.max = max;
@@ -1709,7 +2660,8 @@ var Take = function () {
         this.taken = 0;
         if (this.max <= 0) {
             out._c();
-        } else {
+        }
+        else {
             this.ins._add(this);
         }
     };
@@ -1719,28 +2671,32 @@ var Take = function () {
     };
     Take.prototype._n = function (t) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         var m = ++this.taken;
         if (m < this.max) {
             u._n(t);
-        } else if (m === this.max) {
+        }
+        else if (m === this.max) {
             u._n(t);
             u._c();
         }
     };
     Take.prototype._e = function (err) {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._e(err);
     };
     Take.prototype._c = function () {
         var u = this.out;
-        if (u === NO) return;
+        if (u === NO)
+            return;
         u._c();
     };
     return Take;
-}();
-var Stream = function () {
+}());
+var Stream = (function () {
     function Stream(producer) {
         this._prod = producer || NO;
         this._ils = [];
@@ -1753,38 +2709,55 @@ var Stream = function () {
     Stream.prototype._n = function (t) {
         var a = this._ils;
         var L = a.length;
-        if (this._d) this._dl._n(t);
-        if (L == 1) a[0]._n(t);else {
+        if (this._d)
+            this._dl._n(t);
+        if (L == 1)
+            a[0]._n(t);
+        else {
             var b = copy(a);
-            for (var i = 0; i < L; i++) b[i]._n(t);
+            for (var i = 0; i < L; i++)
+                b[i]._n(t);
         }
     };
     Stream.prototype._e = function (err) {
-        if (this._err !== NO) return;
+        if (this._err !== NO)
+            return;
         this._err = err;
         var a = this._ils;
         var L = a.length;
         this._x();
-        if (this._d) this._dl._e(err);
-        if (L == 1) a[0]._e(err);else {
+        if (this._d)
+            this._dl._e(err);
+        if (L == 1)
+            a[0]._e(err);
+        else {
             var b = copy(a);
-            for (var i = 0; i < L; i++) b[i]._e(err);
+            for (var i = 0; i < L; i++)
+                b[i]._e(err);
         }
-        if (!this._d && L == 0) throw this._err;
+        if (!this._d && L == 0)
+            throw this._err;
     };
     Stream.prototype._c = function () {
         var a = this._ils;
         var L = a.length;
         this._x();
-        if (this._d) this._dl._c();
-        if (L == 1) a[0]._c();else {
+        if (this._d)
+            this._dl._c();
+        if (L == 1)
+            a[0]._c();
+        else {
             var b = copy(a);
-            for (var i = 0; i < L; i++) b[i]._c();
+            for (var i = 0; i < L; i++)
+                b[i]._c();
         }
     };
     Stream.prototype._x = function () {
-        if (this._ils.length === 0) return;
-        if (this._prod !== NO) this._prod._stop();
+        // tear down logic, after error or complete
+        if (this._ils.length === 0)
+            return;
+        if (this._prod !== NO)
+            this._prod._stop();
         this._err = NO;
         this._ils = [];
     };
@@ -1797,32 +2770,36 @@ var Stream = function () {
     };
     Stream.prototype._add = function (il) {
         var ta = this._target;
-        if (ta !== NO) return ta._add(il);
+        if (ta !== NO)
+            return ta._add(il);
         var a = this._ils;
         a.push(il);
-        if (a.length > 1) return;
+        if (a.length > 1)
+            return;
         if (this._stopID !== NO) {
             clearTimeout(this._stopID);
             this._stopID = NO;
-        } else {
+        }
+        else {
             var p = this._prod;
-            if (p !== NO) p._start(this);
+            if (p !== NO)
+                p._start(this);
         }
     };
     Stream.prototype._remove = function (il) {
         var _this = this;
         var ta = this._target;
-        if (ta !== NO) return ta._remove(il);
+        if (ta !== NO)
+            return ta._remove(il);
         var a = this._ils;
         var i = a.indexOf(il);
         if (i > -1) {
             a.splice(i, 1);
             if (this._prod !== NO && a.length <= 0) {
                 this._err = NO;
-                this._stopID = setTimeout(function () {
-                    return _this._stopNow();
-                });
-            } else if (a.length === 1) {
+                this._stopID = setTimeout(function () { return _this._stopNow(); });
+            }
+            else if (a.length === 1) {
                 this._pruneCycles();
             }
         }
@@ -1843,18 +2820,23 @@ var Stream = function () {
     Stream.prototype._hasNoSinks = function (x, trace) {
         if (trace.indexOf(x) !== -1) {
             return true;
-        } else if (x.out === this) {
+        }
+        else if (x.out === this) {
             return true;
-        } else if (x.out && x.out !== NO) {
+        }
+        else if (x.out &&
+            x.out !== NO) {
             return this._hasNoSinks(x.out, trace.concat(x));
-        } else if (x._ils) {
+        }
+        else if (x._ils) {
             for (var i = 0, N = x._ils.length; i < N; i++) {
                 if (!this._hasNoSinks(x._ils[i], trace.concat(x))) {
                     return false;
                 }
             }
             return true;
-        } else {
+        }
+        else {
             return false;
         }
     };
@@ -1909,8 +2891,9 @@ var Stream = function () {
      */
     Stream.create = function (producer) {
         if (producer) {
-            if (typeof producer.start !== 'function' || typeof producer.stop !== 'function') {
-                throw new Error('producer requires both start and stop functions');
+            if (typeof producer.start !== "function" ||
+                typeof producer.stop !== "function") {
+                throw new Error("producer requires both start and stop functions");
             }
             internalizeProducer(producer); // mutates the input
         }
@@ -2000,11 +2983,13 @@ var Stream = function () {
      * @return {Stream}
      */
     Stream.from = function (input) {
-        if (typeof input[symbol_observable_1.default] === 'function') {
+        if (typeof input[symbol_observable_1.default] === "function") {
             return Stream.fromObservable(input);
-        } else if (typeof input.then === 'function') {
+        }
+        else if (typeof input.then === "function") {
             return Stream.fromPromise(input);
-        } else if (Array.isArray(input)) {
+        }
+        else if (Array.isArray(input)) {
             return Stream.fromArray(input);
         }
         throw new TypeError("Type of input to from() must be an Array, Promise, or Observable");
@@ -2144,11 +3129,9 @@ var Stream = function () {
      * @return {Stream}
      */
     Stream.prototype.mapTo = function (projectedValue) {
-        var s = this.map(function () {
-            return projectedValue;
-        });
+        var s = this.map(function () { return projectedValue; });
         var op = s._prod;
-        op.type = op.type.replace('map', 'mapTo');
+        op.type = op.type.replace("map", "mapTo");
         return s;
     };
     /**
@@ -2250,39 +3233,40 @@ var Stream = function () {
      * @param initial The value or event to prepend.
      * @return {Signal}
      */
-    Stream.prototype.startWith = function (initial) {
-        var ins = this;
-        return ys_1.Signal.create((_a = {}, _a[Symbol.iterator] = function () {
-            var val = initial;
-            var err;
-            var hasErr = false;
-            var done = false;
-            var subscription = ins.subscribe({
-                next: function (x) {
-                    val = x;
-                },
-                error: function (e) {
-                    err = e;
-                    hasErr = true;
-                },
-                complete: function () {
-                    done = true;
-                }
-            });
-            return {
-                next: function () {
-                    if (done) {
-                        return { done: true, value: undefined };
-                    } else if (hasErr) {
-                        throw err;
-                    } else {
-                        return { done: false, value: val };
-                    }
-                }
-            };
-        }, _a));
-        var _a;
-    };
+    // startWith(initial: T): Signal<T> {
+    //   const ins = this;
+    //   return Signal.create<T>({
+    //     [Symbol.iterator](): Iterator<T> {
+    //       let val: T = initial;
+    //       let err: any;
+    //       let hasErr: boolean = false;
+    //       let done: boolean = false;
+    //       const subscription = ins.subscribe({
+    //         next: (x: T) => {
+    //           val = x;
+    //         },
+    //         error: (e: any) => {
+    //           err = e;
+    //           hasErr = true;
+    //         },
+    //         complete: () => {
+    //           done = true;
+    //         },
+    //       })
+    //       return {
+    //         next(): IteratorResult<T> {
+    //           if (done) {
+    //             return {done: true, value: undefined};
+    //           } else if (hasErr) {
+    //             throw err;
+    //           } else {
+    //             return {done: false, value: val};
+    //           }
+    //         },
+    //       };
+    //     },
+    //   });
+    // }
     /**
      * Uses another stream to determine when to complete the current stream.
      *
@@ -2304,6 +3288,9 @@ var Stream = function () {
      */
     Stream.prototype.endWhen = function (other) {
         return new (this.ctor())(new EndWhen(other, this));
+    };
+    Stream.prototype.sample = function (iterable) {
+        return new Stream(new Sample(iterable, this));
     };
     /**
      * "Folds" the stream onto itself.
@@ -2390,7 +3377,9 @@ var Stream = function () {
      */
     Stream.prototype.flatten = function () {
         var p = this._prod;
-        return new Stream(p instanceof MapOp && !(p instanceof FilterMapFusion) ? new MapFlatten(p) : new Flatten(this));
+        return new Stream(p instanceof MapOp && !(p instanceof FilterMapFusion)
+            ? new MapFlatten(p)
+            : new Flatten(this));
     };
     /**
      * Passes the input stream to a custom operator, to produce an output stream.
@@ -2511,7 +3500,9 @@ var Stream = function () {
      */
     Stream.prototype.imitate = function (target) {
         if (target instanceof MemoryStream) {
-            throw new Error('A MemoryStream was given to imitate(), but it only ' + 'supports a Stream. Read more about this restriction here: ' + 'https://github.com/staltz/xstream#faq');
+            throw new Error("A MemoryStream was given to imitate(), but it only " +
+                "supports a Stream. Read more about this restriction here: " +
+                "https://github.com/staltz/xstream#faq");
         }
         this._target = target;
         for (var ils = this._ils, N = ils.length, i = 0; i < N; i++) {
@@ -2579,7 +3570,8 @@ var Stream = function () {
         if (!listener) {
             this._d = false;
             this._dl = NO;
-        } else {
+        }
+        else {
             this._d = true;
             listener._n = listener.next || noop;
             listener._e = listener.error || noop;
@@ -2588,7 +3580,7 @@ var Stream = function () {
         }
     };
     return Stream;
-}();
+}());
 /**
  * Blends multiple streams together, emitting events from all of them
  * concurrently.
@@ -2666,7 +3658,7 @@ Stream.combine = function combine() {
     return new Stream(new Combine(streams));
 };
 exports.Stream = Stream;
-var MemoryStream = function (_super) {
+var MemoryStream = (function (_super) {
     __extends(MemoryStream, _super);
     function MemoryStream(producer) {
         var _this = _super.call(this, producer) || this;
@@ -2680,20 +3672,27 @@ var MemoryStream = function (_super) {
     };
     MemoryStream.prototype._add = function (il) {
         var ta = this._target;
-        if (ta !== NO) return ta._add(il);
+        if (ta !== NO)
+            return ta._add(il);
         var a = this._ils;
         a.push(il);
         if (a.length > 1) {
-            if (this._has) il._n(this._v);
+            if (this._has)
+                il._n(this._v);
             return;
         }
         if (this._stopID !== NO) {
-            if (this._has) il._n(this._v);
+            if (this._has)
+                il._n(this._v);
             clearTimeout(this._stopID);
             this._stopID = NO;
-        } else if (this._has) il._n(this._v);else {
+        }
+        else if (this._has)
+            il._n(this._v);
+        else {
             var p = this._prod;
-            if (p !== NO) p._start(this);
+            if (p !== NO)
+                p._start(this);
         }
     };
     MemoryStream.prototype._stopNow = function () {
@@ -2726,103 +3725,14 @@ var MemoryStream = function (_super) {
         return _super.prototype.debug.call(this, labelOrSpy);
     };
     return MemoryStream;
-}(Stream);
+}(Stream));
 exports.MemoryStream = MemoryStream;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Stream;
 
-
-},{"./ys":17,"symbol-observable":31}],16:[function(require,module,exports){
+},{"symbol-observable":28}],32:[function(require,module,exports){
 "use strict";
-
-var __extends = this && this.__extends || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() {
-        this.constructor = d;
-    }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var xs_1 = require("./xs");
-var PushPullProxy = function (_super) {
-    __extends(PushPullProxy, _super);
-    function PushPullProxy() {
-        var _this = _super.call(this) || this;
-        _this.iterator = {
-            next: function () {
-                return { done: false, value: undefined };
-            }
-        };
-        return _this;
-    }
-    PushPullProxy.prototype[Symbol.iterator] = function () {
-        return this.iterator;
-    };
-    PushPullProxy.prototype.imitateIterator = function (iterator) {
-        this.iterator = iterator;
-    };
-    return PushPullProxy;
-}(xs_1.MemoryStream);
-exports.PushPullProxy = PushPullProxy;
-
-
-},{"./xs":15}],17:[function(require,module,exports){
-"use strict";
-
-var xs_1 = require("./xs");
-var Sample = function () {
-    function Sample(signal, ins) {
-        this.type = 'sample';
-        this.ins = ins;
-        this.out = null;
-        this.sig = signal;
-        this.itr = null;
-    }
-    Sample.prototype._start = function (out) {
-        this.out = out;
-        this.itr = this.sig.init();
-        this.ins._add(this);
-    };
-    Sample.prototype._stop = function () {
-        this.ins._remove(this);
-        this.out = null;
-        this.itr.return();
-        this.itr = null;
-    };
-    Sample.prototype._n = function (t) {
-        var u = this.out;
-        if (u === null) {
-            return;
-        }
-        var r;
-        try {
-            r = this.itr.next();
-        } catch (e) {
-            u._e(e);
-            return;
-        }
-        if (r.done) {
-            u._c();
-        } else {
-            u._n(r.value);
-        }
-    };
-    Sample.prototype._e = function (err) {
-        var u = this.out;
-        if (u === null) {
-            return;
-        }
-        u._e(err);
-    };
-    Sample.prototype._c = function () {
-        var u = this.out;
-        if (u === null) {
-            return;
-        }
-        u._c();
-    };
-    return Sample;
-}();
-var Signal = function () {
+var Signal = (function () {
     function Signal(iterable) {
         this.iterable = iterable;
     }
@@ -2836,22 +3746,19 @@ var Signal = function () {
         return this.iterable[Symbol.iterator]();
     };
     Signal.from = function (getter) {
-        return Signal.create((_a = {}, _a[Symbol.iterator] = function () {
-            return {
-                next: function () {
-                    return { value: getter(), done: false };
-                }
-            };
-        }, _a));
+        return Signal.create((_a = {},
+            _a[Symbol.iterator] = function () {
+                return {
+                    next: function () {
+                        return { value: getter(), done: false };
+                    }
+                };
+            },
+            _a));
         var _a;
     };
     Signal.constant = function (val) {
-        return Signal.from(function () {
-            return val;
-        });
-    };
-    Signal.prototype.sample = function (sampler) {
-        return new xs_1.Stream(new Sample(this, sampler));
+        return Signal.from(function () { return val; });
     };
     // public take(amount: number): Signal<T> {
     // }
@@ -2860,61 +3767,69 @@ var Signal = function () {
     // }
     Signal.prototype.map = function (project) {
         var ins = this;
-        return Signal.create((_a = {}, _a[Symbol.iterator] = function () {
-            var tIter = ins.init();
-            return {
-                next: function () {
-                    var t = tIter.next();
-                    if (t.done) {
-                        return { done: true, value: undefined };
-                    } else {
-                        return { done: false, value: project(t.value) };
+        return Signal.create((_a = {},
+            _a[Symbol.iterator] = function () {
+                var tIter = ins.init();
+                return {
+                    next: function () {
+                        var t = tIter.next();
+                        if (t.done) {
+                            return { done: true, value: undefined };
+                        }
+                        else {
+                            return { done: false, value: project(t.value) };
+                        }
                     }
-                }
-            };
-        }, _a));
+                };
+            },
+            _a));
         var _a;
     };
     Signal.prototype.fold = function (accumulate, seed) {
         var ins = this;
-        return Signal.create((_a = {}, _a[Symbol.iterator] = function () {
-            var tIter = ins.init();
-            var sentSeed = false;
-            var acc = seed;
-            return {
-                next: function () {
-                    if (!sentSeed) {
-                        sentSeed = true;
-                        return { done: false, value: seed };
+        return Signal.create((_a = {},
+            _a[Symbol.iterator] = function () {
+                var tIter = ins.init();
+                var sentSeed = false;
+                var acc = seed;
+                return {
+                    next: function () {
+                        if (!sentSeed) {
+                            sentSeed = true;
+                            return { done: false, value: seed };
+                        }
+                        var t = tIter.next();
+                        if (t.done) {
+                            return { done: true, value: undefined };
+                        }
+                        else {
+                            var r = accumulate(acc, t.value);
+                            acc = r;
+                            return { done: false, value: r };
+                        }
                     }
-                    var t = tIter.next();
-                    if (t.done) {
-                        return { done: true, value: undefined };
-                    } else {
-                        var r = accumulate(acc, t.value);
-                        acc = r;
-                        return { done: false, value: r };
-                    }
-                }
-            };
-        }, _a));
+                };
+            },
+            _a));
         var _a;
     };
     Signal.prototype.startWith = function (seed) {
         var ins = this;
-        return Signal.create((_a = {}, _a[Symbol.iterator] = function () {
-            var tIter = ins.init();
-            var sentSeed = false;
-            return {
-                next: function () {
-                    if (!sentSeed) {
-                        sentSeed = true;
-                        return { done: false, value: seed };
+        return Signal.create((_a = {},
+            _a[Symbol.iterator] = function () {
+                var tIter = ins.init();
+                var sentSeed = false;
+                return {
+                    next: function () {
+                        if (!sentSeed) {
+                            sentSeed = true;
+                            return { done: false, value: seed };
+                        }
+                        return tIter.next();
                     }
-                    return tIter.next();
-                }
-            };
-        }, _a));
+                };
+            },
+            _a));
         var _a;
     };
     Signal.prototype.compose = function (operator) {
@@ -2922,872 +3837,28 @@ var Signal = function () {
     };
     Signal.prototype.drop = function (amount) {
         var ins = this;
-        return Signal.create((_a = {}, _a[Symbol.iterator] = function () {
-            var tIter = ins.init();
-            var dropped = 0;
-            return {
-                next: function () {
-                    while (dropped < amount) {
-                        var t = tIter.next();
-                        dropped += 1;
-                        if (t.done) {
-                            return t;
+        return Signal.create((_a = {},
+            _a[Symbol.iterator] = function () {
+                var tIter = ins.init();
+                var dropped = 0;
+                return {
+                    next: function () {
+                        while (dropped < amount) {
+                            var t = tIter.next();
+                            dropped += 1;
+                            if (t.done) {
+                                return t;
+                            }
                         }
+                        return tIter.next();
                     }
-                    return tIter.next();
-                }
-            };
-        }, _a));
+                };
+            },
+            _a));
         var _a;
     };
     return Signal;
-}();
+}());
 exports.Signal = Signal;
 
-
-},{"./xs":15}],18:[function(require,module,exports){
-"use strict";
-var selectorParser_1 = require('./selectorParser');
-function classNameFromVNode(vNode) {
-    var _a = selectorParser_1.selectorParser(vNode).className, cn = _a === void 0 ? '' : _a;
-    if (!vNode.data) {
-        return cn;
-    }
-    var _b = vNode.data, dataClass = _b.class, props = _b.props;
-    if (dataClass) {
-        var c = Object.keys(dataClass)
-            .filter(function (cl) { return dataClass[cl]; });
-        cn += " " + c.join(" ");
-    }
-    if (props && props.className) {
-        cn += " " + props.className;
-    }
-    return cn && cn.trim();
-}
-exports.classNameFromVNode = classNameFromVNode;
-
-},{"./selectorParser":19}],19:[function(require,module,exports){
-"use strict";
-function selectorParser(node) {
-    if (!node.sel) {
-        return {
-            tagName: '',
-            id: '',
-            className: '',
-        };
-    }
-    var sel = node.sel;
-    var hashIdx = sel.indexOf('#');
-    var dotIdx = sel.indexOf('.', hashIdx);
-    var hash = hashIdx > 0 ? hashIdx : sel.length;
-    var dot = dotIdx > 0 ? dotIdx : sel.length;
-    var tagName = hashIdx !== -1 || dotIdx !== -1 ?
-        sel.slice(0, Math.min(hash, dot)) :
-        sel;
-    var id = hash < dot ? sel.slice(hash + 1, dot) : void 0;
-    var className = dotIdx > 0 ? sel.slice(dot + 1).replace(/\./g, ' ') : void 0;
-    return {
-        tagName: tagName,
-        id: id,
-        className: className,
-    };
-}
-exports.selectorParser = selectorParser;
-
-},{}],20:[function(require,module,exports){
-"use strict";
-var vnode_1 = require("./vnode");
-var is = require("./is");
-function addNS(data, children, sel) {
-    data.ns = 'http://www.w3.org/2000/svg';
-    if (sel !== 'foreignObject' && children !== undefined) {
-        for (var i = 0; i < children.length; ++i) {
-            var childData = children[i].data;
-            if (childData !== undefined) {
-                addNS(childData, children[i].children, children[i].sel);
-            }
-        }
-    }
-}
-function h(sel, b, c) {
-    var data = {}, children, text, i;
-    if (c !== undefined) {
-        data = b;
-        if (is.array(c)) {
-            children = c;
-        }
-        else if (is.primitive(c)) {
-            text = c;
-        }
-        else if (c && c.sel) {
-            children = [c];
-        }
-    }
-    else if (b !== undefined) {
-        if (is.array(b)) {
-            children = b;
-        }
-        else if (is.primitive(b)) {
-            text = b;
-        }
-        else if (b && b.sel) {
-            children = [b];
-        }
-        else {
-            data = b;
-        }
-    }
-    if (is.array(children)) {
-        for (i = 0; i < children.length; ++i) {
-            if (is.primitive(children[i]))
-                children[i] = vnode_1.vnode(undefined, undefined, undefined, children[i]);
-        }
-    }
-    if (sel[0] === 's' && sel[1] === 'v' && sel[2] === 'g' &&
-        (sel.length === 3 || sel[3] === '.' || sel[3] === '#')) {
-        addNS(data, children, sel);
-    }
-    return vnode_1.vnode(sel, data, children, text, undefined);
-}
-exports.h = h;
-;
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = h;
-
-},{"./is":22,"./vnode":30}],21:[function(require,module,exports){
-"use strict";
-function createElement(tagName) {
-    return document.createElement(tagName);
-}
-function createElementNS(namespaceURI, qualifiedName) {
-    return document.createElementNS(namespaceURI, qualifiedName);
-}
-function createTextNode(text) {
-    return document.createTextNode(text);
-}
-function createComment(text) {
-    return document.createComment(text);
-}
-function insertBefore(parentNode, newNode, referenceNode) {
-    parentNode.insertBefore(newNode, referenceNode);
-}
-function removeChild(node, child) {
-    node.removeChild(child);
-}
-function appendChild(node, child) {
-    node.appendChild(child);
-}
-function parentNode(node) {
-    return node.parentNode;
-}
-function nextSibling(node) {
-    return node.nextSibling;
-}
-function tagName(elm) {
-    return elm.tagName;
-}
-function setTextContent(node, text) {
-    node.textContent = text;
-}
-function getTextContent(node) {
-    return node.textContent;
-}
-function isElement(node) {
-    return node.nodeType === 1;
-}
-function isText(node) {
-    return node.nodeType === 3;
-}
-function isComment(node) {
-    return node.nodeType === 8;
-}
-exports.htmlDomApi = {
-    createElement: createElement,
-    createElementNS: createElementNS,
-    createTextNode: createTextNode,
-    createComment: createComment,
-    insertBefore: insertBefore,
-    removeChild: removeChild,
-    appendChild: appendChild,
-    parentNode: parentNode,
-    nextSibling: nextSibling,
-    tagName: tagName,
-    setTextContent: setTextContent,
-    getTextContent: getTextContent,
-    isElement: isElement,
-    isText: isText,
-    isComment: isComment,
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.htmlDomApi;
-
-},{}],22:[function(require,module,exports){
-"use strict";
-exports.array = Array.isArray;
-function primitive(s) {
-    return typeof s === 'string' || typeof s === 'number';
-}
-exports.primitive = primitive;
-
-},{}],23:[function(require,module,exports){
-"use strict";
-var NamespaceURIs = {
-    "xlink": "http://www.w3.org/1999/xlink"
-};
-var booleanAttrs = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "compact", "controls", "declare",
-    "default", "defaultchecked", "defaultmuted", "defaultselected", "defer", "disabled", "draggable",
-    "enabled", "formnovalidate", "hidden", "indeterminate", "inert", "ismap", "itemscope", "loop", "multiple",
-    "muted", "nohref", "noresize", "noshade", "novalidate", "nowrap", "open", "pauseonexit", "readonly",
-    "required", "reversed", "scoped", "seamless", "selected", "sortable", "spellcheck", "translate",
-    "truespeed", "typemustmatch", "visible"];
-var booleanAttrsDict = Object.create(null);
-for (var i = 0, len = booleanAttrs.length; i < len; i++) {
-    booleanAttrsDict[booleanAttrs[i]] = true;
-}
-function updateAttrs(oldVnode, vnode) {
-    var key, elm = vnode.elm, oldAttrs = oldVnode.data.attrs, attrs = vnode.data.attrs, namespaceSplit;
-    if (!oldAttrs && !attrs)
-        return;
-    if (oldAttrs === attrs)
-        return;
-    oldAttrs = oldAttrs || {};
-    attrs = attrs || {};
-    // update modified attributes, add new attributes
-    for (key in attrs) {
-        var cur = attrs[key];
-        var old = oldAttrs[key];
-        if (old !== cur) {
-            if (booleanAttrsDict[key]) {
-                if (cur) {
-                    elm.setAttribute(key, "");
-                }
-                else {
-                    elm.removeAttribute(key);
-                }
-            }
-            else {
-                namespaceSplit = key.split(":");
-                if (namespaceSplit.length > 1 && NamespaceURIs.hasOwnProperty(namespaceSplit[0])) {
-                    elm.setAttributeNS(NamespaceURIs[namespaceSplit[0]], key, cur);
-                }
-                else {
-                    elm.setAttribute(key, cur);
-                }
-            }
-        }
-    }
-    // remove removed attributes
-    // use `in` operator since the previous `for` iteration uses it (.i.e. add even attributes with undefined value)
-    // the other option is to remove all attributes with value == undefined
-    for (key in oldAttrs) {
-        if (!(key in attrs)) {
-            elm.removeAttribute(key);
-        }
-    }
-}
-exports.attributesModule = { create: updateAttrs, update: updateAttrs };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.attributesModule;
-
-},{}],24:[function(require,module,exports){
-"use strict";
-function updateClass(oldVnode, vnode) {
-    var cur, name, elm = vnode.elm, oldClass = oldVnode.data.class, klass = vnode.data.class;
-    if (!oldClass && !klass)
-        return;
-    if (oldClass === klass)
-        return;
-    oldClass = oldClass || {};
-    klass = klass || {};
-    for (name in oldClass) {
-        if (!klass[name]) {
-            elm.classList.remove(name);
-        }
-    }
-    for (name in klass) {
-        cur = klass[name];
-        if (cur !== oldClass[name]) {
-            elm.classList[cur ? 'add' : 'remove'](name);
-        }
-    }
-}
-exports.classModule = { create: updateClass, update: updateClass };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.classModule;
-
-},{}],25:[function(require,module,exports){
-"use strict";
-var CAPS_REGEX = /[A-Z]/g;
-function updateDataset(oldVnode, vnode) {
-    var elm = vnode.elm, oldDataset = oldVnode.data.dataset, dataset = vnode.data.dataset, key;
-    if (!oldDataset && !dataset)
-        return;
-    if (oldDataset === dataset)
-        return;
-    oldDataset = oldDataset || {};
-    dataset = dataset || {};
-    var d = elm.dataset;
-    for (key in oldDataset) {
-        if (!dataset[key]) {
-            if (d) {
-                delete d[key];
-            }
-            else {
-                elm.removeAttribute('data-' + key.replace(CAPS_REGEX, '-$&').toLowerCase());
-            }
-        }
-    }
-    for (key in dataset) {
-        if (oldDataset[key] !== dataset[key]) {
-            if (d) {
-                d[key] = dataset[key];
-            }
-            else {
-                elm.setAttribute('data-' + key.replace(CAPS_REGEX, '-$&').toLowerCase(), dataset[key]);
-            }
-        }
-    }
-}
-exports.datasetModule = { create: updateDataset, update: updateDataset };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.datasetModule;
-
-},{}],26:[function(require,module,exports){
-"use strict";
-function updateProps(oldVnode, vnode) {
-    var key, cur, old, elm = vnode.elm, oldProps = oldVnode.data.props, props = vnode.data.props;
-    if (!oldProps && !props)
-        return;
-    if (oldProps === props)
-        return;
-    oldProps = oldProps || {};
-    props = props || {};
-    for (key in oldProps) {
-        if (!props[key]) {
-            delete elm[key];
-        }
-    }
-    for (key in props) {
-        cur = props[key];
-        old = oldProps[key];
-        if (old !== cur && (key !== 'value' || elm[key] !== cur)) {
-            elm[key] = cur;
-        }
-    }
-}
-exports.propsModule = { create: updateProps, update: updateProps };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.propsModule;
-
-},{}],27:[function(require,module,exports){
-"use strict";
-var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
-var nextFrame = function (fn) { raf(function () { raf(fn); }); };
-function setNextFrame(obj, prop, val) {
-    nextFrame(function () { obj[prop] = val; });
-}
-function updateStyle(oldVnode, vnode) {
-    var cur, name, elm = vnode.elm, oldStyle = oldVnode.data.style, style = vnode.data.style;
-    if (!oldStyle && !style)
-        return;
-    if (oldStyle === style)
-        return;
-    oldStyle = oldStyle || {};
-    style = style || {};
-    var oldHasDel = 'delayed' in oldStyle;
-    for (name in oldStyle) {
-        if (!style[name]) {
-            if (name[0] === '-' && name[1] === '-') {
-                elm.style.removeProperty(name);
-            }
-            else {
-                elm.style[name] = '';
-            }
-        }
-    }
-    for (name in style) {
-        cur = style[name];
-        if (name === 'delayed') {
-            for (name in style.delayed) {
-                cur = style.delayed[name];
-                if (!oldHasDel || cur !== oldStyle.delayed[name]) {
-                    setNextFrame(elm.style, name, cur);
-                }
-            }
-        }
-        else if (name !== 'remove' && cur !== oldStyle[name]) {
-            if (name[0] === '-' && name[1] === '-') {
-                elm.style.setProperty(name, cur);
-            }
-            else {
-                elm.style[name] = cur;
-            }
-        }
-    }
-}
-function applyDestroyStyle(vnode) {
-    var style, name, elm = vnode.elm, s = vnode.data.style;
-    if (!s || !(style = s.destroy))
-        return;
-    for (name in style) {
-        elm.style[name] = style[name];
-    }
-}
-function applyRemoveStyle(vnode, rm) {
-    var s = vnode.data.style;
-    if (!s || !s.remove) {
-        rm();
-        return;
-    }
-    var name, elm = vnode.elm, i = 0, compStyle, style = s.remove, amount = 0, applied = [];
-    for (name in style) {
-        applied.push(name);
-        elm.style[name] = style[name];
-    }
-    compStyle = getComputedStyle(elm);
-    var props = compStyle['transition-property'].split(', ');
-    for (; i < props.length; ++i) {
-        if (applied.indexOf(props[i]) !== -1)
-            amount++;
-    }
-    elm.addEventListener('transitionend', function (ev) {
-        if (ev.target === elm)
-            --amount;
-        if (amount === 0)
-            rm();
-    });
-}
-exports.styleModule = {
-    create: updateStyle,
-    update: updateStyle,
-    destroy: applyDestroyStyle,
-    remove: applyRemoveStyle
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.styleModule;
-
-},{}],28:[function(require,module,exports){
-"use strict";
-var vnode_1 = require("./vnode");
-var is = require("./is");
-var htmldomapi_1 = require("./htmldomapi");
-function isUndef(s) { return s === undefined; }
-function isDef(s) { return s !== undefined; }
-var emptyNode = vnode_1.default('', {}, [], undefined, undefined);
-function sameVnode(vnode1, vnode2) {
-    return vnode1.key === vnode2.key && vnode1.sel === vnode2.sel;
-}
-function isVnode(vnode) {
-    return vnode.sel !== undefined;
-}
-function createKeyToOldIdx(children, beginIdx, endIdx) {
-    var i, map = {}, key, ch;
-    for (i = beginIdx; i <= endIdx; ++i) {
-        ch = children[i];
-        if (ch != null) {
-            key = ch.key;
-            if (key !== undefined)
-                map[key] = i;
-        }
-    }
-    return map;
-}
-var hooks = ['create', 'update', 'remove', 'destroy', 'pre', 'post'];
-var h_1 = require("./h");
-exports.h = h_1.h;
-var thunk_1 = require("./thunk");
-exports.thunk = thunk_1.thunk;
-function init(modules, domApi) {
-    var i, j, cbs = {};
-    var api = domApi !== undefined ? domApi : htmldomapi_1.default;
-    for (i = 0; i < hooks.length; ++i) {
-        cbs[hooks[i]] = [];
-        for (j = 0; j < modules.length; ++j) {
-            var hook = modules[j][hooks[i]];
-            if (hook !== undefined) {
-                cbs[hooks[i]].push(hook);
-            }
-        }
-    }
-    function emptyNodeAt(elm) {
-        var id = elm.id ? '#' + elm.id : '';
-        var c = elm.className ? '.' + elm.className.split(' ').join('.') : '';
-        return vnode_1.default(api.tagName(elm).toLowerCase() + id + c, {}, [], undefined, elm);
-    }
-    function createRmCb(childElm, listeners) {
-        return function rmCb() {
-            if (--listeners === 0) {
-                var parent_1 = api.parentNode(childElm);
-                api.removeChild(parent_1, childElm);
-            }
-        };
-    }
-    function createElm(vnode, insertedVnodeQueue) {
-        var i, data = vnode.data;
-        if (data !== undefined) {
-            if (isDef(i = data.hook) && isDef(i = i.init)) {
-                i(vnode);
-                data = vnode.data;
-            }
-        }
-        var children = vnode.children, sel = vnode.sel;
-        if (sel === '!') {
-            if (isUndef(vnode.text)) {
-                vnode.text = '';
-            }
-            vnode.elm = api.createComment(vnode.text);
-        }
-        else if (sel !== undefined) {
-            // Parse selector
-            var hashIdx = sel.indexOf('#');
-            var dotIdx = sel.indexOf('.', hashIdx);
-            var hash = hashIdx > 0 ? hashIdx : sel.length;
-            var dot = dotIdx > 0 ? dotIdx : sel.length;
-            var tag = hashIdx !== -1 || dotIdx !== -1 ? sel.slice(0, Math.min(hash, dot)) : sel;
-            var elm = vnode.elm = isDef(data) && isDef(i = data.ns) ? api.createElementNS(i, tag)
-                : api.createElement(tag);
-            if (hash < dot)
-                elm.id = sel.slice(hash + 1, dot);
-            if (dotIdx > 0)
-                elm.className = sel.slice(dot + 1).replace(/\./g, ' ');
-            for (i = 0; i < cbs.create.length; ++i)
-                cbs.create[i](emptyNode, vnode);
-            if (is.array(children)) {
-                for (i = 0; i < children.length; ++i) {
-                    var ch = children[i];
-                    if (ch != null) {
-                        api.appendChild(elm, createElm(ch, insertedVnodeQueue));
-                    }
-                }
-            }
-            else if (is.primitive(vnode.text)) {
-                api.appendChild(elm, api.createTextNode(vnode.text));
-            }
-            i = vnode.data.hook; // Reuse variable
-            if (isDef(i)) {
-                if (i.create)
-                    i.create(emptyNode, vnode);
-                if (i.insert)
-                    insertedVnodeQueue.push(vnode);
-            }
-        }
-        else {
-            vnode.elm = api.createTextNode(vnode.text);
-        }
-        return vnode.elm;
-    }
-    function addVnodes(parentElm, before, vnodes, startIdx, endIdx, insertedVnodeQueue) {
-        for (; startIdx <= endIdx; ++startIdx) {
-            var ch = vnodes[startIdx];
-            if (ch != null) {
-                api.insertBefore(parentElm, createElm(ch, insertedVnodeQueue), before);
-            }
-        }
-    }
-    function invokeDestroyHook(vnode) {
-        var i, j, data = vnode.data;
-        if (data !== undefined) {
-            if (isDef(i = data.hook) && isDef(i = i.destroy))
-                i(vnode);
-            for (i = 0; i < cbs.destroy.length; ++i)
-                cbs.destroy[i](vnode);
-            if (vnode.children !== undefined) {
-                for (j = 0; j < vnode.children.length; ++j) {
-                    i = vnode.children[j];
-                    if (i != null && typeof i !== "string") {
-                        invokeDestroyHook(i);
-                    }
-                }
-            }
-        }
-    }
-    function removeVnodes(parentElm, vnodes, startIdx, endIdx) {
-        for (; startIdx <= endIdx; ++startIdx) {
-            var i_1 = void 0, listeners = void 0, rm = void 0, ch = vnodes[startIdx];
-            if (ch != null) {
-                if (isDef(ch.sel)) {
-                    invokeDestroyHook(ch);
-                    listeners = cbs.remove.length + 1;
-                    rm = createRmCb(ch.elm, listeners);
-                    for (i_1 = 0; i_1 < cbs.remove.length; ++i_1)
-                        cbs.remove[i_1](ch, rm);
-                    if (isDef(i_1 = ch.data) && isDef(i_1 = i_1.hook) && isDef(i_1 = i_1.remove)) {
-                        i_1(ch, rm);
-                    }
-                    else {
-                        rm();
-                    }
-                }
-                else {
-                    api.removeChild(parentElm, ch.elm);
-                }
-            }
-        }
-    }
-    function updateChildren(parentElm, oldCh, newCh, insertedVnodeQueue) {
-        var oldStartIdx = 0, newStartIdx = 0;
-        var oldEndIdx = oldCh.length - 1;
-        var oldStartVnode = oldCh[0];
-        var oldEndVnode = oldCh[oldEndIdx];
-        var newEndIdx = newCh.length - 1;
-        var newStartVnode = newCh[0];
-        var newEndVnode = newCh[newEndIdx];
-        var oldKeyToIdx;
-        var idxInOld;
-        var elmToMove;
-        var before;
-        while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-            if (oldStartVnode == null) {
-                oldStartVnode = oldCh[++oldStartIdx]; // Vnode might have been moved left
-            }
-            else if (oldEndVnode == null) {
-                oldEndVnode = oldCh[--oldEndIdx];
-            }
-            else if (newStartVnode == null) {
-                newStartVnode = newCh[++newStartIdx];
-            }
-            else if (newEndVnode == null) {
-                newEndVnode = newCh[--newEndIdx];
-            }
-            else if (sameVnode(oldStartVnode, newStartVnode)) {
-                patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue);
-                oldStartVnode = oldCh[++oldStartIdx];
-                newStartVnode = newCh[++newStartIdx];
-            }
-            else if (sameVnode(oldEndVnode, newEndVnode)) {
-                patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue);
-                oldEndVnode = oldCh[--oldEndIdx];
-                newEndVnode = newCh[--newEndIdx];
-            }
-            else if (sameVnode(oldStartVnode, newEndVnode)) {
-                patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue);
-                api.insertBefore(parentElm, oldStartVnode.elm, api.nextSibling(oldEndVnode.elm));
-                oldStartVnode = oldCh[++oldStartIdx];
-                newEndVnode = newCh[--newEndIdx];
-            }
-            else if (sameVnode(oldEndVnode, newStartVnode)) {
-                patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue);
-                api.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm);
-                oldEndVnode = oldCh[--oldEndIdx];
-                newStartVnode = newCh[++newStartIdx];
-            }
-            else {
-                if (oldKeyToIdx === undefined) {
-                    oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx);
-                }
-                idxInOld = oldKeyToIdx[newStartVnode.key];
-                if (isUndef(idxInOld)) {
-                    api.insertBefore(parentElm, createElm(newStartVnode, insertedVnodeQueue), oldStartVnode.elm);
-                    newStartVnode = newCh[++newStartIdx];
-                }
-                else {
-                    elmToMove = oldCh[idxInOld];
-                    if (elmToMove.sel !== newStartVnode.sel) {
-                        api.insertBefore(parentElm, createElm(newStartVnode, insertedVnodeQueue), oldStartVnode.elm);
-                    }
-                    else {
-                        patchVnode(elmToMove, newStartVnode, insertedVnodeQueue);
-                        oldCh[idxInOld] = undefined;
-                        api.insertBefore(parentElm, elmToMove.elm, oldStartVnode.elm);
-                    }
-                    newStartVnode = newCh[++newStartIdx];
-                }
-            }
-        }
-        if (oldStartIdx > oldEndIdx) {
-            before = newCh[newEndIdx + 1] == null ? null : newCh[newEndIdx + 1].elm;
-            addVnodes(parentElm, before, newCh, newStartIdx, newEndIdx, insertedVnodeQueue);
-        }
-        else if (newStartIdx > newEndIdx) {
-            removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx);
-        }
-    }
-    function patchVnode(oldVnode, vnode, insertedVnodeQueue) {
-        var i, hook;
-        if (isDef(i = vnode.data) && isDef(hook = i.hook) && isDef(i = hook.prepatch)) {
-            i(oldVnode, vnode);
-        }
-        var elm = vnode.elm = oldVnode.elm;
-        var oldCh = oldVnode.children;
-        var ch = vnode.children;
-        if (oldVnode === vnode)
-            return;
-        if (vnode.data !== undefined) {
-            for (i = 0; i < cbs.update.length; ++i)
-                cbs.update[i](oldVnode, vnode);
-            i = vnode.data.hook;
-            if (isDef(i) && isDef(i = i.update))
-                i(oldVnode, vnode);
-        }
-        if (isUndef(vnode.text)) {
-            if (isDef(oldCh) && isDef(ch)) {
-                if (oldCh !== ch)
-                    updateChildren(elm, oldCh, ch, insertedVnodeQueue);
-            }
-            else if (isDef(ch)) {
-                if (isDef(oldVnode.text))
-                    api.setTextContent(elm, '');
-                addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue);
-            }
-            else if (isDef(oldCh)) {
-                removeVnodes(elm, oldCh, 0, oldCh.length - 1);
-            }
-            else if (isDef(oldVnode.text)) {
-                api.setTextContent(elm, '');
-            }
-        }
-        else if (oldVnode.text !== vnode.text) {
-            api.setTextContent(elm, vnode.text);
-        }
-        if (isDef(hook) && isDef(i = hook.postpatch)) {
-            i(oldVnode, vnode);
-        }
-    }
-    return function patch(oldVnode, vnode) {
-        var i, elm, parent;
-        var insertedVnodeQueue = [];
-        for (i = 0; i < cbs.pre.length; ++i)
-            cbs.pre[i]();
-        if (!isVnode(oldVnode)) {
-            oldVnode = emptyNodeAt(oldVnode);
-        }
-        if (sameVnode(oldVnode, vnode)) {
-            patchVnode(oldVnode, vnode, insertedVnodeQueue);
-        }
-        else {
-            elm = oldVnode.elm;
-            parent = api.parentNode(elm);
-            createElm(vnode, insertedVnodeQueue);
-            if (parent !== null) {
-                api.insertBefore(parent, vnode.elm, api.nextSibling(elm));
-                removeVnodes(parent, [oldVnode], 0, 0);
-            }
-        }
-        for (i = 0; i < insertedVnodeQueue.length; ++i) {
-            insertedVnodeQueue[i].data.hook.insert(insertedVnodeQueue[i]);
-        }
-        for (i = 0; i < cbs.post.length; ++i)
-            cbs.post[i]();
-        return vnode;
-    };
-}
-exports.init = init;
-
-},{"./h":20,"./htmldomapi":21,"./is":22,"./thunk":29,"./vnode":30}],29:[function(require,module,exports){
-"use strict";
-var h_1 = require("./h");
-function copyToThunk(vnode, thunk) {
-    thunk.elm = vnode.elm;
-    vnode.data.fn = thunk.data.fn;
-    vnode.data.args = thunk.data.args;
-    thunk.data = vnode.data;
-    thunk.children = vnode.children;
-    thunk.text = vnode.text;
-    thunk.elm = vnode.elm;
-}
-function init(thunk) {
-    var cur = thunk.data;
-    var vnode = cur.fn.apply(undefined, cur.args);
-    copyToThunk(vnode, thunk);
-}
-function prepatch(oldVnode, thunk) {
-    var i, old = oldVnode.data, cur = thunk.data;
-    var oldArgs = old.args, args = cur.args;
-    if (old.fn !== cur.fn || oldArgs.length !== args.length) {
-        copyToThunk(cur.fn.apply(undefined, args), thunk);
-    }
-    for (i = 0; i < args.length; ++i) {
-        if (oldArgs[i] !== args[i]) {
-            copyToThunk(cur.fn.apply(undefined, args), thunk);
-            return;
-        }
-    }
-    copyToThunk(oldVnode, thunk);
-}
-exports.thunk = function thunk(sel, key, fn, args) {
-    if (args === undefined) {
-        args = fn;
-        fn = key;
-        key = undefined;
-    }
-    return h_1.h(sel, {
-        key: key,
-        hook: { init: init, prepatch: prepatch },
-        fn: fn,
-        args: args
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.thunk;
-
-},{"./h":20}],30:[function(require,module,exports){
-"use strict";
-function vnode(sel, data, children, text, elm) {
-    var key = data === undefined ? undefined : data.key;
-    return { sel: sel, data: data, children: children,
-        text: text, elm: elm, key: key };
-}
-exports.vnode = vnode;
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = vnode;
-
-},{}],31:[function(require,module,exports){
-module.exports = require('./lib/index');
-
-},{"./lib/index":32}],32:[function(require,module,exports){
-(function (global){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _ponyfill = require('./ponyfill');
-
-var _ponyfill2 = _interopRequireDefault(_ponyfill);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
-var root; /* global window */
-
-
-if (typeof self !== 'undefined') {
-  root = self;
-} else if (typeof window !== 'undefined') {
-  root = window;
-} else if (typeof global !== 'undefined') {
-  root = global;
-} else if (typeof module !== 'undefined') {
-  root = module;
-} else {
-  root = Function('return this')();
-}
-
-var result = (0, _ponyfill2['default'])(root);
-exports['default'] = result;
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":33}],33:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-exports['default'] = symbolObservablePonyfill;
-function symbolObservablePonyfill(root) {
-	var result;
-	var _Symbol = root.Symbol;
-
-	if (typeof _Symbol === 'function') {
-		if (_Symbol.observable) {
-			result = _Symbol.observable;
-		} else {
-			result = _Symbol('observable');
-			_Symbol.observable = result;
-		}
-	} else {
-		result = '@@observable';
-	}
-
-	return result;
-};
-},{}]},{},[12]);
+},{}]},{},[1]);

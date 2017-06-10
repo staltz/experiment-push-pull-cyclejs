@@ -1,7 +1,7 @@
-import {Stream} from '../../xs';
-import {Signal} from '../../ys';
-import {DevToolEnabledSource} from '../../run/src';
-import {adapt} from '../../run/src/adapt';
+import {Stream} from 'xstream';
+import {Signal} from 'ysignal';
+import {DevToolEnabledSource} from '@cycle/run';
+import {adapt} from '@cycle/run/lib/adapt';
 import {DOMSource, EventsFnOptions} from './DOMSource';
 import {DocumentDOMSource} from './DocumentDOMSource';
 // import {BodyDOMSource} from './BodyDOMSource';
@@ -43,7 +43,10 @@ const eventTypesThatDontBubble = [
   `waiting`,
 ];
 
-function determineUseCapture(eventType: string, options: EventsFnOptions): boolean {
+function determineUseCapture(
+  eventType: string,
+  options: EventsFnOptions,
+): boolean {
   let result = false;
   if (typeof options.useCapture === 'boolean') {
     result = options.useCapture;
@@ -55,11 +58,12 @@ function determineUseCapture(eventType: string, options: EventsFnOptions): boole
 }
 
 export class MainDOMSource implements DOMSource {
-
-  constructor(private _rootElementS: Signal<Element>,
-              private _rootElementIter: Iterator<Element>,
-              private _namespace: Array<string> = [],
-              private _name: string) {
+  constructor(
+    private _rootElementS: Signal<Element>,
+    private _rootElementIter: Iterator<Element>,
+    private _namespace: Array<string> = [],
+    private _name: string,
+  ) {
     this.isolateSource = isolateSource;
     this.isolateSink = (sink, scope) => {
       const prevFullScope = getFullScope(this._namespace);
@@ -81,8 +85,10 @@ export class MainDOMSource implements DOMSource {
 
   public select(selector: string): DOMSource {
     if (typeof selector !== 'string') {
-      throw new Error(`DOM driver's select() expects the argument to be a ` +
-        `string as a CSS selector`);
+      throw new Error(
+        `DOM driver's select() expects the argument to be a ` +
+          `string as a CSS selector`,
+      );
     }
     if (selector === 'document') {
       return new DocumentDOMSource(this._name);
@@ -91,9 +97,9 @@ export class MainDOMSource implements DOMSource {
     //   return new BodyDOMSource(this._name);
     // }
     const trimmedSelector = selector.trim();
-    const childNamespace = trimmedSelector === `:root` ?
-      this._namespace :
-      this._namespace.concat(trimmedSelector);
+    const childNamespace = trimmedSelector === `:root`
+      ? this._namespace
+      : this._namespace.concat(trimmedSelector);
     return new MainDOMSource(
       this._rootElementS,
       this._rootElementIter,
@@ -102,21 +108,28 @@ export class MainDOMSource implements DOMSource {
     );
   }
 
-  public events(eventType: string, options: EventsFnOptions = {}): Stream<Event> {
+  public events(
+    eventType: string,
+    options: EventsFnOptions = {},
+  ): Stream<Event> {
     if (typeof eventType !== `string`) {
-      throw new Error(`DOM driver's events() expects argument to be a ` +
-        `string representing the event type to listen for.`);
+      throw new Error(
+        `DOM driver's events() expects argument to be a ` +
+          `string representing the event type to listen for.`,
+      );
     }
     const useCapture: boolean = determineUseCapture(eventType, options);
 
-    const event$ = Stream.of(null).map(() => {
-      const next = this._rootElementIter.next();
-      if (next.done) {
-        return Stream.empty();
-      } else {
-        return fromEvent(next.value, eventType, useCapture);
-      }
-    });
+    const event$ = Stream.of(null)
+      .map(() => {
+        const next = this._rootElementIter.next();
+        if (next.done) {
+          return Stream.empty();
+        } else {
+          return fromEvent(next.value, eventType, useCapture);
+        }
+      })
+      .flatten();
 
     const out: DevToolEnabledSource & Stream<Event> = adapt(event$);
     out._isCycleSource = this._name;

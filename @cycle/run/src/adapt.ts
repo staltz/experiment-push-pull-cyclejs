@@ -1,4 +1,4 @@
-import {Stream} from '../../xs';
+import {Stream} from 'xstream';
 
 export interface AdaptStream {
   (s: Stream<any>): any;

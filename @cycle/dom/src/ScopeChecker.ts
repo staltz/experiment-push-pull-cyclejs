@@ -1,9 +1,10 @@
 import {IsolateModule} from './IsolateModule';
 
 export class ScopeChecker {
-  constructor(private fullScope: string,
-              private isolateModule: IsolateModule) {
-  }
+  constructor(
+    private fullScope: string,
+    private isolateModule: IsolateModule,
+  ) {}
 
   /**
    * Checks whether the given element is *directly* in the scope of this
@@ -13,7 +14,7 @@ export class ScopeChecker {
    */
   public isDirectlyInScope(leaf: Element): boolean {
     for (let el: Element | null = leaf; el; el = el.parentElement) {
-      const fullScope = this.isolateModule.getFullScope(el);
+      const fullScope = ''; // this.isolateModule.getFullScope(el);
       if (fullScope && fullScope !== this.fullScope) {
         return false;
       }
