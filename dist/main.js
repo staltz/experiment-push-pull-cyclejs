@@ -1,28 +1,43 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
+var xstream_1 = require("xstream");
 var ysignal_1 = require("ysignal");
 var run_1 = require("@cycle/run");
+var cycle_onionify_1 = require("cycle-onionify");
 var dom_1 = require("@cycle/dom");
 function main(sources) {
-    var vdomS = sources.windowHeight.map(function (height) {
-        return dom_1.div(".foo", "Height: " + height);
+    var click$ = sources.DOM.select('.foo').events('click').mapTo(null);
+    var incrementReducer$ = click$.mapTo(function incrementReducer(prevState) {
+        return {
+            count: prevState.count + 1
+        };
+    });
+    var initialReducer$ = xstream_1.Stream.of(function initialReducer() {
+        return { count: 0 };
+    });
+    var reducer$ = xstream_1.Stream.merge(initialReducer$, incrementReducer$);
+    var vdomS = ysignal_1.Signal.combine(sources.state.stateS, sources.windowHeight).map(function (_a) {
+        var state = _a[0],
+            height = _a[1];
+        return dom_1.div('.container', [dom_1.div('.height', 'Height: ' + height), dom_1.button('.foo', 'Count: ' + state.count), dom_1.div('.not', 'Not this')]);
     });
     return {
-        DOM: vdomS
+        DOM: vdomS,
+        state: reducer$
     };
 }
-run_1.run(main, {
+run_1.run(cycle_onionify_1.default(main, 'state'), {
     windowHeight: function () {
         return ysignal_1.Signal.from(function () {
             return window.outerHeight;
         });
     },
-    DOM: dom_1.makeDOMDriver("#main-container")
+    DOM: dom_1.makeDOMDriver('#main-container')
 });
 
 
-},{"@cycle/dom":8,"@cycle/run":14,"ysignal":32}],2:[function(require,module,exports){
+},{"@cycle/dom":8,"@cycle/run":14,"cycle-onionify":17,"xstream":37,"ysignal":38}],2:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -43,7 +58,7 @@ var DocumentDOMSource = (function () {
     DocumentDOMSource.prototype.events = function (eventType, options) {
         if (options === void 0) { options = {}; }
         var stream;
-        if (options && typeof options.useCapture === "boolean") {
+        if (options && typeof options.useCapture === 'boolean') {
             stream = fromEvent_1.fromEvent(document, eventType, options.useCapture);
         }
         else {
@@ -57,7 +72,7 @@ var DocumentDOMSource = (function () {
 }());
 exports.DocumentDOMSource = DocumentDOMSource;
 
-},{"./fromEvent":5,"@cycle/run/lib/adapt":13,"xstream":31}],3:[function(require,module,exports){
+},{"./fromEvent":5,"@cycle/run/lib/adapt":13,"xstream":37}],3:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -97,7 +112,7 @@ var eventTypesThatDontBubble = [
 ];
 function determineUseCapture(eventType, options) {
     var result = false;
-    if (typeof options.useCapture === "boolean") {
+    if (typeof options.useCapture === 'boolean') {
         result = options.useCapture;
     }
     if (eventTypesThatDontBubble.indexOf(eventType) !== -1) {
@@ -116,7 +131,7 @@ var MainDOMSource = (function () {
         this.isolateSource = isolate_1.isolateSource;
         this.isolateSink = function (sink, scope) {
             var prevFullScope = utils_1.getFullScope(_this._namespace);
-            var nextFullScope = [prevFullScope, scope].filter(function (x) { return !!x; }).join("-");
+            var nextFullScope = [prevFullScope, scope].filter(function (x) { return !!x; }).join('-');
             return isolate_1.isolateSink(sink, nextFullScope);
         };
     }
@@ -134,11 +149,11 @@ var MainDOMSource = (function () {
         configurable: true
     });
     MainDOMSource.prototype.select = function (selector) {
-        if (typeof selector !== "string") {
+        if (typeof selector !== 'string') {
             throw new Error("DOM driver's select() expects the argument to be a " +
                 "string as a CSS selector");
         }
-        if (selector === "document") {
+        if (selector === 'document') {
             return new DocumentDOMSource_1.DocumentDOMSource(this._name);
         }
         // if (selector === 'body') {
@@ -158,7 +173,13 @@ var MainDOMSource = (function () {
                 "string representing the event type to listen for.");
         }
         var useCapture = determineUseCapture(eventType, options);
-        var event$ = xstream_1.Stream.of(null)
+        var domInteractive$ = fromEvent_1.fromEvent(document, 'readystatechange', false)
+            .filter(function () { return document.readyState === 'interactive'; })
+            .take(1);
+        var ready$ = document.readyState === 'loading'
+            ? domInteractive$
+            : xstream_1.Stream.of(null);
+        var event$ = ready$
             .map(function () {
             var next = _this._rootElementIter.next();
             if (next.done) {
@@ -181,7 +202,7 @@ var MainDOMSource = (function () {
 }());
 exports.MainDOMSource = MainDOMSource;
 
-},{"./DocumentDOMSource":2,"./fromEvent":5,"./isolate":9,"./utils":12,"@cycle/run/lib/adapt":13,"xstream":31}],4:[function(require,module,exports){
+},{"./DocumentDOMSource":2,"./fromEvent":5,"./isolate":9,"./utils":12,"@cycle/run/lib/adapt":13,"xstream":37}],4:[function(require,module,exports){
 "use strict";
 var hyperscript_1 = require("./hyperscript");
 var classNameFromVNode_1 = require("snabbdom-selector/lib/commonjs/classNameFromVNode");
@@ -199,7 +220,7 @@ var VNodeWrapper = (function () {
         var vNodeData = vnode.data || {};
         var vNodeDataProps = vNodeData.props || {};
         var _b = vNodeDataProps.id, vNodeId = _b === void 0 ? selId : _b;
-        var isVNodeAndRootElementIdentical = typeof vNodeId === "string" &&
+        var isVNodeAndRootElementIdentical = typeof vNodeId === 'string' &&
             vNodeId.toUpperCase() === this.rootElement.id.toUpperCase() &&
             selTagName.toUpperCase() === this.rootElement.tagName.toUpperCase() &&
             vNodeClassName.toUpperCase() === this.rootElement.className.toUpperCase();
@@ -210,15 +231,15 @@ var VNodeWrapper = (function () {
     };
     VNodeWrapper.prototype.wrap = function (children) {
         var _a = this.rootElement, tagName = _a.tagName, id = _a.id, className = _a.className;
-        var selId = id ? "#" + id : "";
-        var selClass = className ? "." + className.split(" ").join(".") : "";
+        var selId = id ? "#" + id : '';
+        var selClass = className ? "." + className.split(" ").join(".") : '';
         return hyperscript_1.h("" + tagName.toLowerCase() + selId + selClass, {}, children);
     };
     return VNodeWrapper;
 }());
 exports.VNodeWrapper = VNodeWrapper;
 
-},{"./hyperscript":7,"snabbdom-selector/lib/commonjs/classNameFromVNode":15,"snabbdom-selector/lib/commonjs/selectorParser":16}],5:[function(require,module,exports){
+},{"./hyperscript":7,"snabbdom-selector/lib/commonjs/classNameFromVNode":21,"snabbdom-selector/lib/commonjs/selectorParser":22}],5:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 function fromEvent(element, eventName, useCapture) {
@@ -234,12 +255,12 @@ function fromEvent(element, eventName, useCapture) {
         },
         stop: function stop() {
             this.element.removeEventListener(eventName, this.next, useCapture);
-        }
+        },
     });
 }
 exports.fromEvent = fromEvent;
 
-},{"xstream":31}],6:[function(require,module,exports){
+},{"xstream":37}],6:[function(require,module,exports){
 "use strict";
 var hyperscript_1 = require("./hyperscript");
 function isValidString(param) {
@@ -273,39 +294,199 @@ function createTagFunction(tagName) {
     };
 }
 var SVG_TAG_NAMES = [
-    'a', 'altGlyph', 'altGlyphDef', 'altGlyphItem', 'animate', 'animateColor',
-    'animateMotion', 'animateTransform', 'circle', 'clipPath', 'colorProfile',
-    'cursor', 'defs', 'desc', 'ellipse', 'feBlend', 'feColorMatrix',
-    'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting',
-    'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB',
-    'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode',
-    'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting',
-    'feSpotlight', 'feTile', 'feTurbulence', 'filter', 'font', 'fontFace',
-    'fontFaceFormat', 'fontFaceName', 'fontFaceSrc', 'fontFaceUri',
-    'foreignObject', 'g', 'glyph', 'glyphRef', 'hkern', 'image', 'line',
-    'linearGradient', 'marker', 'mask', 'metadata', 'missingGlyph', 'mpath',
-    'path', 'pattern', 'polygon', 'polyline', 'radialGradient', 'rect', 'script',
-    'set', 'stop', 'style', 'switch', 'symbol', 'text', 'textPath', 'title',
-    'tref', 'tspan', 'use', 'view', 'vkern',
+    'a',
+    'altGlyph',
+    'altGlyphDef',
+    'altGlyphItem',
+    'animate',
+    'animateColor',
+    'animateMotion',
+    'animateTransform',
+    'circle',
+    'clipPath',
+    'colorProfile',
+    'cursor',
+    'defs',
+    'desc',
+    'ellipse',
+    'feBlend',
+    'feColorMatrix',
+    'feComponentTransfer',
+    'feComposite',
+    'feConvolveMatrix',
+    'feDiffuseLighting',
+    'feDisplacementMap',
+    'feDistantLight',
+    'feFlood',
+    'feFuncA',
+    'feFuncB',
+    'feFuncG',
+    'feFuncR',
+    'feGaussianBlur',
+    'feImage',
+    'feMerge',
+    'feMergeNode',
+    'feMorphology',
+    'feOffset',
+    'fePointLight',
+    'feSpecularLighting',
+    'feSpotlight',
+    'feTile',
+    'feTurbulence',
+    'filter',
+    'font',
+    'fontFace',
+    'fontFaceFormat',
+    'fontFaceName',
+    'fontFaceSrc',
+    'fontFaceUri',
+    'foreignObject',
+    'g',
+    'glyph',
+    'glyphRef',
+    'hkern',
+    'image',
+    'line',
+    'linearGradient',
+    'marker',
+    'mask',
+    'metadata',
+    'missingGlyph',
+    'mpath',
+    'path',
+    'pattern',
+    'polygon',
+    'polyline',
+    'radialGradient',
+    'rect',
+    'script',
+    'set',
+    'stop',
+    'style',
+    'switch',
+    'symbol',
+    'text',
+    'textPath',
+    'title',
+    'tref',
+    'tspan',
+    'use',
+    'view',
+    'vkern',
 ];
 var svg = createTagFunction('svg');
 SVG_TAG_NAMES.forEach(function (tag) {
     svg[tag] = createTagFunction(tag);
 });
 var TAG_NAMES = [
-    'a', 'abbr', 'address', 'area', 'article', 'aside', 'audio', 'b', 'base',
-    'bdi', 'bdo', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption',
-    'cite', 'code', 'col', 'colgroup', 'dd', 'del', 'dfn', 'dir', 'div', 'dl',
-    'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html',
-    'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'keygen', 'label', 'legend',
-    'li', 'link', 'main', 'map', 'mark', 'menu', 'meta', 'nav', 'noscript',
-    'object', 'ol', 'optgroup', 'option', 'p', 'param', 'pre', 'progress', 'q',
-    'rp', 'rt', 'ruby', 's', 'samp', 'script', 'section', 'select', 'small',
-    'source', 'span', 'strong', 'style', 'sub', 'sup', 'table', 'tbody', 'td',
-    'textarea', 'tfoot', 'th', 'thead', 'title', 'tr', 'u', 'ul', 'video',
+    'a',
+    'abbr',
+    'address',
+    'area',
+    'article',
+    'aside',
+    'audio',
+    'b',
+    'base',
+    'bdi',
+    'bdo',
+    'blockquote',
+    'body',
+    'br',
+    'button',
+    'canvas',
+    'caption',
+    'cite',
+    'code',
+    'col',
+    'colgroup',
+    'dd',
+    'del',
+    'dfn',
+    'dir',
+    'div',
+    'dl',
+    'dt',
+    'em',
+    'embed',
+    'fieldset',
+    'figcaption',
+    'figure',
+    'footer',
+    'form',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'head',
+    'header',
+    'hgroup',
+    'hr',
+    'html',
+    'i',
+    'iframe',
+    'img',
+    'input',
+    'ins',
+    'kbd',
+    'keygen',
+    'label',
+    'legend',
+    'li',
+    'link',
+    'main',
+    'map',
+    'mark',
+    'menu',
+    'meta',
+    'nav',
+    'noscript',
+    'object',
+    'ol',
+    'optgroup',
+    'option',
+    'p',
+    'param',
+    'pre',
+    'progress',
+    'q',
+    'rp',
+    'rt',
+    'ruby',
+    's',
+    'samp',
+    'script',
+    'section',
+    'select',
+    'small',
+    'source',
+    'span',
+    'strong',
+    'style',
+    'sub',
+    'sup',
+    'table',
+    'tbody',
+    'td',
+    'textarea',
+    'tfoot',
+    'th',
+    'thead',
+    'title',
+    'tr',
+    'u',
+    'ul',
+    'video',
 ];
-var exported = { SVG_TAG_NAMES: SVG_TAG_NAMES, TAG_NAMES: TAG_NAMES, svg: svg, isSelector: isSelector, createTagFunction: createTagFunction };
+var exported = {
+    SVG_TAG_NAMES: SVG_TAG_NAMES,
+    TAG_NAMES: TAG_NAMES,
+    svg: svg,
+    isSelector: isSelector,
+    createTagFunction: createTagFunction,
+};
 TAG_NAMES.forEach(function (n) {
     exported[n] = createTagFunction(n);
 });
@@ -322,8 +503,10 @@ function mutateStreamWithNS(vNode) {
 }
 function addNS(data, children, selector) {
     data.ns = "http://www.w3.org/2000/svg";
-    if (selector !== "text" && selector !== "foreignObject" &&
-        typeof children !== 'undefined' && is.array(children)) {
+    if (selector !== "text" &&
+        selector !== "foreignObject" &&
+        typeof children !== 'undefined' &&
+        is.array(children)) {
         for (var i = 0; i < children.length; ++i) {
             addNS(children[i].data, children[i].children, children[i].sel);
         }
@@ -367,9 +550,8 @@ function h(sel, b, c) {
     return vnode_1.vnode(sel, data, children, text, undefined);
 }
 exports.h = h;
-;
 
-},{"snabbdom/is":19,"snabbdom/vnode":27}],8:[function(require,module,exports){
+},{"snabbdom/is":25,"snabbdom/vnode":33}],8:[function(require,module,exports){
 "use strict";
 var thunk_1 = require("snabbdom/thunk");
 exports.thunk = thunk_1.thunk;
@@ -564,7 +746,7 @@ exports.u = hyperscript_helpers_1.default.u;
 exports.ul = hyperscript_helpers_1.default.ul;
 exports.video = hyperscript_helpers_1.default.video;
 
-},{"./MainDOMSource":3,"./hyperscript":7,"./hyperscript-helpers":6,"./makeDOMDriver":10,"snabbdom/thunk":26}],9:[function(require,module,exports){
+},{"./MainDOMSource":3,"./hyperscript":7,"./hyperscript-helpers":6,"./makeDOMDriver":10,"snabbdom/thunk":32}],9:[function(require,module,exports){
 "use strict";
 var utils_1 = require("./utils");
 function isolateSource(source, scope) {
@@ -578,9 +760,10 @@ function isolateSink(sink, fullScope) {
             var isolateData = vnode.data.isolate;
             var prevFullScopeNum = isolateData.replace(/(cycle|\-)/g, '');
             var fullScopeNum = fullScope.replace(/(cycle|\-)/g, '');
-            if (isNaN(parseInt(prevFullScopeNum))
-                || isNaN(parseInt(fullScopeNum))
-                || prevFullScopeNum > fullScopeNum) {
+            if (isNaN(parseInt(prevFullScopeNum)) ||
+                isNaN(parseInt(fullScopeNum)) ||
+                prevFullScopeNum > fullScopeNum) {
+                // > is lexicographic string comparison
                 return vnode;
             }
         }
@@ -632,7 +815,7 @@ var MimicIterator = (function () {
             return target.next(value);
         }
         else {
-            throw new Error("MimicIterator cannot be pulled before its target iterator is set.");
+            throw new Error('MimicIterator cannot be pulled before its target iterator is set.');
         }
     };
     return MimicIterator;
@@ -647,7 +830,7 @@ function makeDOMDriver(container, options) {
     var vnodeWrapper = new VNodeWrapper_1.VNodeWrapper(rootElement);
     makeDOMDriverInputGuard(modules);
     function DOMDriver(vnodeProxy, name) {
-        if (name === void 0) { name = "DOM"; }
+        if (name === void 0) { name = 'DOM'; }
         var vnodeS = ysignal_1.Signal.create(vnodeProxy);
         domDriverInputGuard(vnodeS);
         var rootElementS = vnodeS
@@ -659,9 +842,9 @@ function makeDOMDriver(container, options) {
         var iter = new MimicIterator();
         // Start the snabbdom patching, over time
         var listener = { error: reportSnabbdomError };
-        if (document.readyState === "loading") {
-            document.addEventListener("readystatechange", function () {
-                if (document.readyState === "interactive") {
+        if (document.readyState === 'loading') {
+            document.addEventListener('readystatechange', function () {
+                if (document.readyState === 'interactive') {
                     iter.imitate(rootElementS.init());
                     requestAnimationFrame(function again1() {
                         iter.next();
@@ -683,7 +866,7 @@ function makeDOMDriver(container, options) {
 }
 exports.makeDOMDriver = makeDOMDriver;
 
-},{"./MainDOMSource":3,"./VNodeWrapper":4,"./modules":11,"./utils":12,"snabbdom":25,"ysignal":32}],11:[function(require,module,exports){
+},{"./MainDOMSource":3,"./VNodeWrapper":4,"./modules":11,"./utils":12,"snabbdom":31,"ysignal":38}],11:[function(require,module,exports){
 "use strict";
 var class_1 = require("snabbdom/modules/class");
 exports.ClassModule = class_1.default;
@@ -695,30 +878,37 @@ var style_1 = require("snabbdom/modules/style");
 exports.StyleModule = style_1.default;
 var dataset_1 = require("snabbdom/modules/dataset");
 exports.DatasetModule = dataset_1.default;
-var modules = [style_1.default, class_1.default, props_1.default, attributes_1.default, dataset_1.default];
+var modules = [
+    style_1.default,
+    class_1.default,
+    props_1.default,
+    attributes_1.default,
+    dataset_1.default,
+];
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = modules;
 
-},{"snabbdom/modules/attributes":20,"snabbdom/modules/class":21,"snabbdom/modules/dataset":22,"snabbdom/modules/props":23,"snabbdom/modules/style":24}],12:[function(require,module,exports){
+},{"snabbdom/modules/attributes":26,"snabbdom/modules/class":27,"snabbdom/modules/dataset":28,"snabbdom/modules/props":29,"snabbdom/modules/style":30}],12:[function(require,module,exports){
 "use strict";
 function isElement(obj) {
-    return typeof HTMLElement === "object" ?
-        obj instanceof HTMLElement || obj instanceof DocumentFragment :
-        obj && typeof obj === "object" && obj !== null &&
+    return typeof HTMLElement === "object"
+        ? obj instanceof HTMLElement || obj instanceof DocumentFragment
+        : obj &&
+            typeof obj === "object" &&
+            obj !== null &&
             (obj.nodeType === 1 || obj.nodeType === 11) &&
             typeof obj.nodeName === "string";
 }
 exports.SCOPE_PREFIX = "$$CYCLEDOM$$-";
 function getElement(selectors) {
-    var domElement = typeof selectors === 'string' ?
-        document.querySelector(selectors) :
-        selectors;
+    var domElement = typeof selectors === 'string'
+        ? document.querySelector(selectors)
+        : selectors;
     if (typeof selectors === 'string' && domElement === null) {
         throw new Error("Cannot render into unknown element `" + selectors + "`");
     }
     else if (!isElement(domElement)) {
-        throw new Error("Given container is not a DOM element neither a " +
-            "selector string.");
+        throw new Error("Given container is not a DOM element neither a " + "selector string.");
     }
     return domElement;
 }
@@ -980,7 +1170,647 @@ exports.run = run;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = run;
 
-},{"./adapt":13,"xstream":31}],15:[function(require,module,exports){
+},{"./adapt":13,"xstream":37}],15:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var adapt_1 = require("@cycle/run/lib/adapt");
+var pickMerge_1 = require("./pickMerge");
+var pickCombine_1 = require("./pickCombine");
+var CollectionSource = (function () {
+    function CollectionSource(_ins$) {
+        this._ins$ = _ins$;
+    }
+    /**
+     * Like `merge` in xstream, this operator blends multiple streams together, but
+     * picks those streams from a collection of component instances.
+     *
+     * Use the `selector` string to pick a stream from the sinks object of each
+     * component instance, then pickMerge will merge all those picked streams.
+     *
+     * @param {String} selector a name of a channel in a sinks object belonging to
+     * each component in the collection of components.
+     * @return {Function} an operator to be used with xstream's `compose` method.
+     */
+    CollectionSource.prototype.pickMerge = function (selector) {
+        return adapt_1.adapt(this._ins$.compose(pickMerge_1.pickMerge(selector)));
+    };
+    /**
+     * Like `combine` in xstream, this operator combines multiple streams together,
+     * but picks those streams from a collection of component instances.
+     *
+     * Use the `selector` string to pick a stream from the sinks object of each
+     * component instance, then pickCombine will combine all those picked streams.
+     *
+     * @param {String} selector a name of a channel in a sinks object belonging to
+     * each component in the collection of components.
+     * @return {Function} an operator to be used with xstream's `compose` method.
+     */
+    CollectionSource.prototype.pickCombine = function (selector) {
+        return adapt_1.adapt(this._ins$.compose(pickCombine_1.pickCombine(selector)));
+    };
+    return CollectionSource;
+}());
+exports.CollectionSource = CollectionSource;
+
+},{"./pickCombine":19,"./pickMerge":20,"@cycle/run/lib/adapt":13}],16:[function(require,module,exports){
+"use strict";
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+function updateArrayEntry(array, scope, newVal) {
+    if (newVal === array[scope]) {
+        return array;
+    }
+    var index = parseInt(scope);
+    if (typeof newVal === 'undefined') {
+        return array.filter(function (val, i) { return i !== index; });
+    }
+    return array.map(function (val, i) { return (i === index ? newVal : val); });
+}
+function makeGetter(scope) {
+    if (typeof scope === 'string' || typeof scope === 'number') {
+        return function lensGet(state) {
+            if (typeof state === 'undefined') {
+                return void 0;
+            }
+            else {
+                return state[scope];
+            }
+        };
+    }
+    else {
+        return scope.get;
+    }
+}
+function makeSetter(scope) {
+    if (typeof scope === 'string' || typeof scope === 'number') {
+        return function lensSet(state, childState) {
+            if (Array.isArray(state)) {
+                return updateArrayEntry(state, scope, childState);
+            }
+            else if (typeof state === 'undefined') {
+                return _a = {}, _a[scope] = childState, _a;
+            }
+            else {
+                return __assign({}, state, (_b = {}, _b[scope] = childState, _b));
+            }
+            var _a, _b;
+        };
+    }
+    else {
+        return scope.set;
+    }
+}
+function isolateSource(source, scope) {
+    return source.select(scope);
+}
+exports.isolateSource = isolateSource;
+function isolateSink(innerReducer$, scope) {
+    var get = makeGetter(scope);
+    var set = makeSetter(scope);
+    return innerReducer$.map(function (innerReducer) {
+        return function outerReducer(outer) {
+            var prevInner = get(outer);
+            var nextInner = innerReducer(prevInner);
+            if (prevInner === nextInner) {
+                return outer;
+            }
+            else {
+                return set(outer, nextInner);
+            }
+        };
+    });
+}
+exports.isolateSink = isolateSink;
+function defaultGetKey(statePiece) {
+    return statePiece.key;
+}
+var identityLens = {
+    get: function (outer) { return outer; },
+    set: function (outer, inner) { return inner; },
+};
+function instanceLens(getKey, key) {
+    return {
+        get: function (arr) {
+            if (typeof arr === 'undefined') {
+                return void 0;
+            }
+            else {
+                for (var i = 0, n = arr.length; i < n; ++i) {
+                    if (getKey(arr[i]) === key) {
+                        return arr[i];
+                    }
+                }
+                return void 0;
+            }
+        },
+        set: function (arr, item) {
+            if (typeof arr === 'undefined') {
+                return [item];
+            }
+            else if (typeof item === 'undefined') {
+                return arr.filter(function (s) { return getKey(s) !== key; });
+            }
+            else {
+                return arr.map(function (s) {
+                    if (getKey(s) === key) {
+                        return item;
+                    }
+                    else {
+                        return s;
+                    }
+                });
+            }
+        },
+    };
+}
+var StateSource = (function () {
+    function StateSource(signal, name) {
+        /**
+         * Treats the state in this StateSource as a dynamic collection of many child
+         * components, returning a CollectionSource.
+         *
+         * Typically you use this function when the state$ emits arrays, and each
+         * entry in the array is an object holding the state for each child component.
+         * When the state array grows, the collection will automatically instantiate
+         * a new child component. Similarly, when the state array gets smaller, the
+         * collection will handle removal of the corresponding child component.
+         *
+         * This function returns a CollectionSource, which can be consumed with the
+         * operators `pickCombine` and `pickMerge` attached to it as methods.
+         *
+         * As arguments, you pass the child Cycle.js component function to use for
+         * each entry in the array, and the sources object to give to as input to each
+         * child component. Each entry in the array is expected to be an object with
+         * at least `key` as a property, which should uniquely identify that child. If
+         * these objects have a different unique identifier like `id`, you can tell
+         * that to `asCollection` in the third argument: a function that takes the
+         * child object state, and returns the unique identifier. By default, this
+         * third argument is the function `obj => obj.key`.
+         *
+         * @param {Function} itemComp a function that takes `sources` as input and
+         * returns `sinks`, representing the component to be used for each child in
+         * the collection.
+         * @param {Object} sources the object with sources to pass as input for each
+         * child component.
+         * @param getKey
+         * @return {CollectionSource}
+         */
+        // public asCollection<Si>(
+        //   itemComp: (so: any) => Si,
+        //   sources: any,
+        //   getKey: any = defaultGetKey,
+        // ): CollectionSource<Si> {
+        //   const arrayS = this.stateS;
+        //   const name = this._name;
+        //   const collectionS = arrayS.fold(
+        //     (acc: Instances<Si>, nextState: Array<any> | any) => {
+        //       const dict = acc.dict;
+        //       if (Array.isArray(nextState)) {
+        //         const nextInstArray = Array(nextState.length) as Array<
+        //           Si & {_key: string}
+        //         >;
+        //         const nextKeys = new Set<string>();
+        //         // add
+        //         for (let i = 0, n = nextState.length; i < n; ++i) {
+        //           const key = getKey(nextState[i]);
+        //           nextKeys.add(key);
+        //           if (dict.has(key)) {
+        //             nextInstArray[i] = dict.get(key) as any;
+        //           } else {
+        //             const scopes = {
+        //               '*': '$' + key,
+        //               [name]: instanceLens(getKey, key),
+        //             };
+        //             const sinks = isolate(itemComp, scopes)(sources);
+        //             dict.set(key, sinks);
+        //             nextInstArray[i] = sinks;
+        //           }
+        //           nextInstArray[i]._key = key;
+        //         }
+        //         // remove
+        //         dict.forEach((_, key) => {
+        //           if (!nextKeys.has(key)) {
+        //             dict.delete(key);
+        //           }
+        //         });
+        //         nextKeys.clear();
+        //         return {dict: dict, arr: nextInstArray};
+        //       } else {
+        //         dict.clear();
+        //         const key = getKey(nextState);
+        //         const scopes = {'*': '$' + key, [name]: identityLens};
+        //         const sinks = isolate(itemComp, scopes)(sources);
+        //         dict.set(key, sinks);
+        //         return {dict: dict, arr: [sinks]};
+        //       }
+        //     },
+        //     {dict: new Map(), arr: []} as Instances<Si>,
+        //   );
+        //   return new CollectionSource<Si>(collectionS);
+        // }
+        this.isolateSource = isolateSource;
+        this.isolateSink = isolateSink;
+        this.stateS = signal;
+        // .filter(s => typeof s !== 'undefined');
+        // .compose(dropRepeats())
+        // .remember();
+        this._name = name;
+        this.stateS._isCycleSource = name;
+    }
+    /**
+     * Selects a part (or scope) of the state object and returns a new StateSource
+     * dynamically representing that selected part of the state.
+     *
+     * @param {string|number|lens} scope as a string, this argument represents the
+     * property you want to select from the state object. As a number, this
+     * represents the array index you want to select from the state array. As a
+     * lens object (an object with get() and set()), this argument represents any
+     * custom way of selecting something from the state object.
+     */
+    StateSource.prototype.select = function (scope) {
+        var get = makeGetter(scope);
+        return new StateSource(this.stateS.map(get), this._name);
+    };
+    return StateSource;
+}());
+exports.StateSource = StateSource;
+
+},{}],17:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var onionify_1 = require("./onionify");
+var StateSource_1 = require("./StateSource");
+exports.StateSource = StateSource_1.StateSource;
+exports.isolateSource = StateSource_1.isolateSource;
+exports.isolateSink = StateSource_1.isolateSink;
+var CollectionSource_1 = require("./CollectionSource");
+exports.CollectionSource = CollectionSource_1.CollectionSource;
+/**
+ * Like `merge` in xstream, this operator blends multiple streams together, but
+ * picks those streams from a stream of instances.
+ *
+ * The instances data structure has a sinks object for each instance. Use the
+ * `selector` string to pick a stream from the sinks object of each instance,
+ * then pickMerge will merge all those picked streams.
+ *
+ * @param {String} selector a name of a channel in a sinks object belonging to
+ * each component in the collection of instances.
+ * @return {Function} an operator to be used with xstream's `compose` method.
+ */
+var pickMerge_1 = require("./pickMerge");
+exports.pickMerge = pickMerge_1.pickMerge;
+/**
+ * Like `combine` in xstream, this operator combines multiple streams together,
+ * but picks those streams from a stream of instances.
+ *
+ * The instances data structure has a sinks object for each instance. Use the
+ * `selector` string to pick a stream from the sinks object of each instance,
+ * then pickCombine will combine all those picked streams.
+ *
+ * @param {String} selector a name of a channel in a sinks object belonging to
+ * each component in the collection of instances.
+ * @return {Function} an operator to be used with xstream's `compose` method.
+ */
+var pickCombine_1 = require("./pickCombine");
+exports.pickCombine = pickCombine_1.pickCombine;
+/**
+ * Given a Cycle.js component that expects an onion state *source* and will
+ * output onion reducer *sink*, this function sets up the state management
+ * mechanics to accumulate state over time and provide the state source. It
+ * returns a Cycle.js component which wraps the component given as input.
+ * Essentially, it hooks up the onion sink with the onion source as a cycle.
+ *
+ * Optionally, you can pass a custom name for the onion channel. By default,
+ * the name is 'onion' in sources and sinks, but you can change that to be
+ * whatever string you wish.
+ *
+ * @param {Function} main a function that takes `sources` as input and outputs
+ * `sinks`.
+ * @param {String} name an optional string for the custom name given to the
+ * onion channel. By default, it is 'onion'.
+ * @return {Function} a component that wraps the main function given as input,
+ * adding state accumulation logic to it.
+ */
+exports.default = onionify_1.onionify;
+
+},{"./CollectionSource":15,"./StateSource":16,"./onionify":18,"./pickCombine":19,"./pickMerge":20}],18:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xstream_1 = require("xstream");
+var ysignal_1 = require("ysignal");
+var StateSource_1 = require("./StateSource");
+function fold(seed, reducer$) {
+    return ysignal_1.Signal.create((_a = {},
+        _a[Symbol.iterator] = function () {
+            var acc = seed;
+            var done = false;
+            var subscription = reducer$.subscribe({
+                next: function (reducer) {
+                    var next = reducer(acc);
+                    if (typeof next !== 'undefined') {
+                        acc = next;
+                    }
+                },
+                error: function (e) { },
+                complete: function () {
+                    done = true;
+                },
+            });
+            return {
+                next: function () {
+                    return { done: done, value: done ? undefined : acc };
+                },
+                return: function () {
+                    subscription.unsubscribe();
+                    return { done: true, value: undefined };
+                },
+            };
+        },
+        _a));
+    var _a;
+}
+function onionify(main, name) {
+    if (name === void 0) { name = 'onion'; }
+    return function mainOnionified(sources) {
+        var reducerMimic$ = xstream_1.default.create();
+        var stateS = fold(void 0, reducerMimic$);
+        // .fold((state, reducer) => reducer(state), void 0 as (T | undefined))
+        // .drop(1);
+        sources[name] = new StateSource_1.StateSource(stateS, name);
+        var sinks = main(sources);
+        if (sinks[name]) {
+            reducerMimic$.imitate(xstream_1.default.fromObservable(sinks[name]));
+        }
+        return sinks;
+    };
+}
+exports.onionify = onionify;
+
+},{"./StateSource":16,"xstream":37,"ysignal":38}],19:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xstream_1 = require("xstream");
+var PickCombineListener = (function () {
+    function PickCombineListener(key, out, p, ins) {
+        this.key = key;
+        this.out = out;
+        this.p = p;
+        this.val = xstream_1.NO;
+        this.ins = ins;
+    }
+    PickCombineListener.prototype._n = function (t) {
+        var p = this.p, out = this.out;
+        this.val = t;
+        if (out === null) {
+            return;
+        }
+        this.p.up();
+    };
+    PickCombineListener.prototype._e = function (err) {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._e(err);
+    };
+    PickCombineListener.prototype._c = function () {
+    };
+    return PickCombineListener;
+}());
+var PickCombine = (function () {
+    function PickCombine(sel, ins) {
+        this.type = 'combine';
+        this.ins = ins;
+        this.sel = sel;
+        this.out = null;
+        this.ils = new Map();
+        this.inst = null;
+    }
+    PickCombine.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    PickCombine.prototype._stop = function () {
+        var ils = this.ils;
+        ils.forEach(function (il) {
+            il.ins._remove(il);
+            il.ins = null;
+            il.out = null;
+            il.val = null;
+        });
+        ils.clear();
+        this.out = null;
+        this.ils = new Map();
+        this.inst = null;
+    };
+    PickCombine.prototype.up = function () {
+        var arr = this.inst.arr;
+        var n = arr.length;
+        var ils = this.ils;
+        var outArr = Array(n);
+        for (var i = 0; i < n; ++i) {
+            var sinks = arr[i];
+            var key = sinks._key;
+            if (!ils.has(key)) {
+                return;
+            }
+            var val = ils.get(key).val;
+            if (val === xstream_1.NO) {
+                return;
+            }
+            outArr[i] = val;
+        }
+        this.out._n(outArr);
+    };
+    PickCombine.prototype._n = function (inst) {
+        this.inst = inst;
+        var arrSinks = inst.arr;
+        var ils = this.ils;
+        var out = this.out;
+        var sel = this.sel;
+        var dict = inst.dict;
+        var n = arrSinks.length;
+        // remove
+        var removed = false;
+        ils.forEach(function (il, key) {
+            if (!dict.has(key)) {
+                il.ins._remove(il);
+                il.ins = null;
+                il.out = null;
+                il.val = null;
+                ils.delete(key);
+                removed = true;
+            }
+        });
+        if (n === 0) {
+            out._n([]);
+            return;
+        }
+        // add
+        var added = false;
+        for (var i = 0; i < n; ++i) {
+            var sinks = arrSinks[i];
+            var key = sinks._key;
+            var sink = sinks[sel];
+            if (!ils.has(key)) {
+                ils.set(key, new PickCombineListener(key, out, this, sink));
+                added = true;
+            }
+        }
+        if (added) {
+            for (var i = 0; i < n; ++i) {
+                var sinks = arrSinks[i];
+                var key = sinks._key;
+                var sink = sinks[sel];
+                if (sink._ils.length === 0) {
+                    sink._add(ils.get(key));
+                }
+            }
+        }
+        if (removed) {
+            this.up();
+        }
+    };
+    PickCombine.prototype._e = function (e) {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._e(e);
+    };
+    PickCombine.prototype._c = function () {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._c();
+    };
+    return PickCombine;
+}());
+function pickCombine(selector) {
+    return function pickCombineOperator(inst$) {
+        return new xstream_1.Stream(new PickCombine(selector, inst$));
+    };
+}
+exports.pickCombine = pickCombine;
+
+},{"xstream":37}],20:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xstream_1 = require("xstream");
+var PickMergeListener = (function () {
+    function PickMergeListener(out, p, ins) {
+        this.ins = ins;
+        this.out = out;
+        this.p = p;
+    }
+    PickMergeListener.prototype._n = function (t) {
+        var p = this.p, out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._n(t);
+    };
+    PickMergeListener.prototype._e = function (err) {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._e(err);
+    };
+    PickMergeListener.prototype._c = function () {
+    };
+    return PickMergeListener;
+}());
+var PickMerge = (function () {
+    function PickMerge(sel, ins) {
+        this.type = 'pickMerge';
+        this.ins = ins;
+        this.out = null;
+        this.sel = sel;
+        this.ils = new Map();
+        this.inst = null;
+    }
+    PickMerge.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    PickMerge.prototype._stop = function () {
+        var ils = this.ils;
+        ils.forEach(function (il, key) {
+            il.ins._remove(il);
+            il.ins = null;
+            il.out = null;
+            ils.delete(key);
+        });
+        ils.clear();
+        this.out = null;
+        this.ils = new Map();
+        this.inst = null;
+    };
+    PickMerge.prototype._n = function (inst) {
+        this.inst = inst;
+        var arrSinks = inst.arr;
+        var ils = this.ils;
+        var out = this.out;
+        var sel = this.sel;
+        var n = arrSinks.length;
+        // add
+        for (var i = 0; i < n; ++i) {
+            var sinks = arrSinks[i];
+            var key = sinks._key;
+            var sink = sinks[sel];
+            if (!ils.has(key)) {
+                ils.set(key, new PickMergeListener(out, this, sink));
+            }
+        }
+        for (var i = 0; i < n; ++i) {
+            var sinks = arrSinks[i];
+            var key = sinks._key;
+            var sink = sinks[sel];
+            if (sink._ils.length === 0) {
+                sink._add(ils.get(key));
+            }
+        }
+        // remove
+        ils.forEach(function (il, key) {
+            if (!inst.dict.has(key) || !inst.dict.get(key)) {
+                il.ins._remove(il);
+                il.ins = null;
+                il.out = null;
+                ils.delete(key);
+            }
+        });
+    };
+    PickMerge.prototype._e = function (err) {
+        var u = this.out;
+        if (u === null)
+            return;
+        u._e(err);
+    };
+    PickMerge.prototype._c = function () {
+        var u = this.out;
+        if (u === null)
+            return;
+        u._c();
+    };
+    return PickMerge;
+}());
+function pickMerge(selector) {
+    return function pickMergeOperator(inst$) {
+        return new xstream_1.Stream(new PickMerge(selector, inst$));
+    };
+}
+exports.pickMerge = pickMerge;
+
+},{"xstream":37}],21:[function(require,module,exports){
 "use strict";
 var selectorParser_1 = require('./selectorParser');
 function classNameFromVNode(vNode) {
@@ -1001,7 +1831,7 @@ function classNameFromVNode(vNode) {
 }
 exports.classNameFromVNode = classNameFromVNode;
 
-},{"./selectorParser":16}],16:[function(require,module,exports){
+},{"./selectorParser":22}],22:[function(require,module,exports){
 "use strict";
 function selectorParser(_a) {
     var sel = _a.sel;
@@ -1022,7 +1852,7 @@ function selectorParser(_a) {
 }
 exports.selectorParser = selectorParser;
 
-},{}],17:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -1082,7 +1912,7 @@ exports.h = h;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = h;
 
-},{"./is":19,"./vnode":27}],18:[function(require,module,exports){
+},{"./is":25,"./vnode":33}],24:[function(require,module,exports){
 "use strict";
 function createElement(tagName) {
     return document.createElement(tagName);
@@ -1129,7 +1959,7 @@ exports.htmlDomApi = {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.htmlDomApi;
 
-},{}],19:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 "use strict";
 exports.array = Array.isArray;
 function primitive(s) {
@@ -1137,7 +1967,7 @@ function primitive(s) {
 }
 exports.primitive = primitive;
 
-},{}],20:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 "use strict";
 var NamespaceURIs = {
     "xlink": "http://www.w3.org/1999/xlink"
@@ -1189,7 +2019,7 @@ exports.attributesModule = { create: updateAttrs, update: updateAttrs };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.attributesModule;
 
-},{}],21:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 "use strict";
 function updateClass(oldVnode, vnode) {
     var cur, name, elm = vnode.elm, oldClass = oldVnode.data.class, klass = vnode.data.class;
@@ -1215,7 +2045,7 @@ exports.classModule = { create: updateClass, update: updateClass };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.classModule;
 
-},{}],22:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 "use strict";
 function updateDataset(oldVnode, vnode) {
     var elm = vnode.elm, oldDataset = oldVnode.data.dataset, dataset = vnode.data.dataset, key;
@@ -1240,7 +2070,7 @@ exports.datasetModule = { create: updateDataset, update: updateDataset };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.datasetModule;
 
-},{}],23:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 "use strict";
 function updateProps(oldVnode, vnode) {
     var key, cur, old, elm = vnode.elm, oldProps = oldVnode.data.props, props = vnode.data.props;
@@ -1267,7 +2097,7 @@ exports.propsModule = { create: updateProps, update: updateProps };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.propsModule;
 
-},{}],24:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 "use strict";
 var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
 var nextFrame = function (fn) { raf(function () { raf(fn); }); };
@@ -1354,7 +2184,7 @@ exports.styleModule = {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.styleModule;
 
-},{}],25:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -1640,7 +2470,7 @@ function init(modules, domApi) {
 }
 exports.init = init;
 
-},{"./h":17,"./htmldomapi":18,"./is":19,"./thunk":26,"./vnode":27}],26:[function(require,module,exports){
+},{"./h":23,"./htmldomapi":24,"./is":25,"./thunk":32,"./vnode":33}],32:[function(require,module,exports){
 "use strict";
 var h_1 = require("./h");
 function copyToThunk(vnode, thunk) {
@@ -1687,7 +2517,7 @@ exports.thunk = function thunk(sel, key, fn, args) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.thunk;
 
-},{"./h":17}],27:[function(require,module,exports){
+},{"./h":23}],33:[function(require,module,exports){
 "use strict";
 function vnode(sel, data, children, text, elm) {
     var key = data === undefined ? undefined : data.key;
@@ -1698,10 +2528,10 @@ exports.vnode = vnode;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vnode;
 
-},{}],28:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 module.exports = require('./lib/index');
 
-},{"./lib/index":29}],29:[function(require,module,exports){
+},{"./lib/index":35}],35:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -1733,7 +2563,7 @@ if (typeof self !== 'undefined') {
 var result = (0, _ponyfill2['default'])(root);
 exports['default'] = result;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":30}],30:[function(require,module,exports){
+},{"./ponyfill":36}],36:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1757,7 +2587,7 @@ function symbolObservablePonyfill(root) {
 
 	return result;
 };
-},{}],31:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -3730,7 +4560,7 @@ exports.MemoryStream = MemoryStream;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Stream;
 
-},{"symbol-observable":28}],32:[function(require,module,exports){
+},{"symbol-observable":34}],38:[function(require,module,exports){
 "use strict";
 var Signal = (function () {
     function Signal(iterable) {
@@ -3859,6 +4689,29 @@ var Signal = (function () {
     };
     return Signal;
 }());
+Signal.combine = function combine() {
+    var signals = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        signals[_i] = arguments[_i];
+    }
+    return new Signal((_a = {},
+        _a[Symbol.iterator] = function () {
+            var iters = signals.map(function (s) { return s.init(); });
+            return {
+                next: function () {
+                    var results = iters.map(function (iter) { return iter.next(); });
+                    if (results.some(function (r) { return r.done; })) {
+                        return { done: true, value: undefined };
+                    }
+                    else {
+                        return { done: false, value: results.map(function (r) { return r.value; }) };
+                    }
+                }
+            };
+        },
+        _a));
+    var _a;
+};
 exports.Signal = Signal;
 
 },{}]},{},[1]);
