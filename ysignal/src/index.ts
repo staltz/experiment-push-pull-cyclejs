@@ -1,5 +1,50 @@
 export type Getter<T> = () => T;
 
+export interface CombineSignature {
+  (): Signal<Array<any>>;
+  <T1>(s1: Signal<T1>): Signal<[T1]>;
+  <T1, T2>(s1: Signal<T1>, s2: Signal<T2>): Signal<[T1, T2]>;
+  <T1, T2, T3>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<T3>): Signal<
+    [T1, T2, T3]
+  >;
+  <T1, T2, T3, T4>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<T3>, s4: Signal<
+    T4
+  >): Signal<[T1, T2, T3, T4]>;
+  <T1, T2, T3, T4, T5>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
+    T3
+  >, s4: Signal<T4>, s5: Signal<T5>): Signal<[T1, T2, T3, T4, T5]>;
+  <T1, T2, T3, T4, T5, T6>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
+    T3
+  >, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>): Signal<
+    [T1, T2, T3, T4, T5, T6]
+  >;
+  <T1, T2, T3, T4, T5, T6, T7>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
+    T3
+  >, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<T7>): Signal<
+    [T1, T2, T3, T4, T5, T6, T7]
+  >;
+  <T1, T2, T3, T4, T5, T6, T7, T8>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
+    T3
+  >, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<T7>, s8: Signal<
+    T8
+  >): Signal<[T1, T2, T3, T4, T5, T6, T7, T8]>;
+  <T1, T2, T3, T4, T5, T6, T7, T8, T9>(s1: Signal<T1>, s2: Signal<
+    T2
+  >, s3: Signal<T3>, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<
+    T7
+  >, s8: Signal<T8>, s9: Signal<T9>): Signal<
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9]
+  >;
+  <T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(s1: Signal<T1>, s2: Signal<
+    T2
+  >, s3: Signal<T3>, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<
+    T7
+  >, s8: Signal<T8>, s9: Signal<T9>, s10: Signal<T10>): Signal<
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]
+  >;
+  (...signals: Array<Signal<any>>): Signal<Array<any>>;
+}
+
 export class Signal<T> implements Iterable<T> {
   constructor(iterable: Iterable<T>) {
     this.iterable = iterable;
@@ -25,15 +70,35 @@ export class Signal<T> implements Iterable<T> {
         return {
           next(): IteratorResult<T> {
             return {value: getter(), done: false};
-          },
+          }
         };
-      },
+      }
     });
   }
 
   public static constant<T>(val: T): Signal<T> {
     return Signal.from<T>(() => val);
   }
+
+  public static combine: CombineSignature = function combine(
+    ...signals: Array<Signal<any>>
+  ) {
+    return new Signal<Array<any>>({
+      [Symbol.iterator](): Iterator<Array<any>> {
+        const iters = signals.map(s => s.init());
+        return {
+          next(): IteratorResult<Array<any>> {
+            const results = iters.map(iter => iter.next());
+            if (results.some(r => r.done)) {
+              return {done: true, value: undefined as any};
+            } else {
+              return {done: false, value: results.map(r => r.value)};
+            }
+          }
+        };
+      }
+    });
+  } as CombineSignature;
 
   // public take(amount: number): Signal<T> {
   // }
@@ -55,9 +120,9 @@ export class Signal<T> implements Iterable<T> {
             } else {
               return {done: false, value: project(t.value)};
             }
-          },
+          }
         };
-      },
+      }
     });
   }
 
@@ -82,9 +147,9 @@ export class Signal<T> implements Iterable<T> {
               acc = r;
               return {done: false, value: r};
             }
-          },
+          }
         };
-      },
+      }
     });
   }
 
@@ -101,9 +166,9 @@ export class Signal<T> implements Iterable<T> {
               return {done: false, value: seed};
             }
             return tIter.next();
-          },
+          }
         };
-      },
+      }
     });
   }
 
@@ -127,9 +192,9 @@ export class Signal<T> implements Iterable<T> {
               }
             }
             return tIter.next();
-          },
+          }
         };
-      },
+      }
     });
   }
 }
