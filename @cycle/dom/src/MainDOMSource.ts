@@ -40,12 +40,12 @@ const eventTypesThatDontBubble = [
   `timeupdate`,
   `unload`,
   `volumechange`,
-  `waiting`,
+  `waiting`
 ];
 
 function determineUseCapture(
   eventType: string,
-  options: EventsFnOptions,
+  options: EventsFnOptions
 ): boolean {
   let result = false;
   if (typeof options.useCapture === 'boolean') {
@@ -62,7 +62,7 @@ export class MainDOMSource implements DOMSource {
     private _rootElementS: Signal<Element>,
     private _rootElementIter: Iterator<Element>,
     private _namespace: Array<string> = [],
-    private _name: string,
+    private _name: string
   ) {
     this.isolateSource = isolateSource;
     this.isolateSink = (sink, scope) => {
@@ -87,7 +87,7 @@ export class MainDOMSource implements DOMSource {
     if (typeof selector !== 'string') {
       throw new Error(
         `DOM driver's select() expects the argument to be a ` +
-          `string as a CSS selector`,
+          `string as a CSS selector`
       );
     }
     if (selector === 'document') {
@@ -104,23 +104,31 @@ export class MainDOMSource implements DOMSource {
       this._rootElementS,
       this._rootElementIter,
       childNamespace,
-      this._name,
+      this._name
     );
   }
 
   public events(
     eventType: string,
-    options: EventsFnOptions = {},
+    options: EventsFnOptions = {}
   ): Stream<Event> {
     if (typeof eventType !== `string`) {
       throw new Error(
         `DOM driver's events() expects argument to be a ` +
-          `string representing the event type to listen for.`,
+          `string representing the event type to listen for.`
       );
     }
     const useCapture: boolean = determineUseCapture(eventType, options);
 
-    const event$ = Stream.of(null)
+    const domInteractive$ = fromEvent(document, 'readystatechange', false)
+      .filter(() => document.readyState === 'interactive')
+      .take(1);
+
+    const ready$: Stream<any> = document.readyState === 'loading'
+      ? domInteractive$
+      : Stream.of(null);
+
+    const event$ = ready$
       .map(() => {
         const next = this._rootElementIter.next();
         if (next.done) {
