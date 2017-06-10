@@ -7,6 +7,7 @@
   "dependencies": {
     "@cycle/dom": "file:./@cycle/dom",
     "@cycle/run": "file:./@cycle/run",
+    "cycle-onionify": "file:./cycle-onionify",
     "xstream": "file:./xstream",
     "ysignal": "file:./ysignal"
   },

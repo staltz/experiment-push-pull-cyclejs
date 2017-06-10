@@ -1,0 +1,27 @@
+{
+  "author": {
+    "name": "staltz"
+  },
+  "dependencies": {
+    "xstream": ">=10"
+  },
+  "description": "Augments your Cycle.js main function with onion-shaped state management",
+  "devDependencies": {
+    "@cycle/isolate": "2.1.0",
+    "@cycle/run": "3.0.0",
+    "ava": "0.18.x",
+    "typescript": "2.3.2"
+  },
+  "license": "MIT",
+  "main": "lib/index.js",
+  "name": "cycle-onionify",
+  "scripts": {
+    "lib": "tsc",
+    "prelib": "mkdir -p lib",
+    "prepublish": "npm run lib",
+    "pretest": "npm run lib",
+    "test": "ava --timeout=2000"
+  },
+  "typings": "lib/index.d.ts",
+  "version": "4.0.0-rc.9"
+}
