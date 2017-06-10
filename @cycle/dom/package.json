@@ -1,70 +1,10 @@
 {
-  "_args": [
-    [
-      {
-        "raw": "@cycle/dom@15.0.0-rc.2",
-        "scope": "@cycle",
-        "escapedName": "@cycle%2fdom",
-        "name": "@cycle/dom",
-        "rawSpec": "15.0.0-rc.2",
-        "spec": "15.0.0-rc.2",
-        "type": "version"
-      },
-      "/Users/staltz/oss/cyclejs/examples/hello-lastname"
-    ]
-  ],
-  "_from": "@cycle/dom@15.0.0-rc.2",
-  "_id": "@cycle/dom@15.0.0-rc.2",
-  "_inCache": true,
-  "_location": "/@cycle/dom",
-  "_nodeVersion": "6.9.1",
-  "_npmOperationalInternal": {
-    "host": "packages-12-west.internal.npmjs.com",
-    "tmp": "tmp/dom-15.0.0-rc.2.tgz_1486122891918_0.19516400061547756"
-  },
-  "_npmUser": {
-    "name": "cycle",
-    "email": "andre+npmcycle@staltz.com"
-  },
-  "_npmVersion": "3.10.8",
-  "_phantomChildren": {},
-  "_requested": {
-    "raw": "@cycle/dom@15.0.0-rc.2",
-    "scope": "@cycle",
-    "escapedName": "@cycle%2fdom",
-    "name": "@cycle/dom",
-    "rawSpec": "15.0.0-rc.2",
-    "spec": "15.0.0-rc.2",
-    "type": "version"
-  },
-  "_requiredBy": [
-    "/"
-  ],
-  "_resolved": "https://registry.npmjs.org/@cycle/dom/-/dom-15.0.0-rc.2.tgz",
-  "_shasum": "207d3935f07c5e91674d6fb42561135d3df1e437",
-  "_shrinkwrap": null,
-  "_spec": "@cycle/dom@15.0.0-rc.2",
-  "_where": "/Users/staltz/oss/cyclejs/examples/hello-lastname",
   "browserify-shim": {
     "xstream": "global:xstream"
   },
   "bugs": {
     "url": "https://github.com/cyclejs/cyclejs/issues"
   },
-  "contributors": [
-    {
-      "name": "Andre Staltz",
-      "email": "andre@staltz.com"
-    },
-    {
-      "name": "Tylor Steinberger",
-      "email": "tlsteinberger167@gmail.com"
-    },
-    {
-      "name": "Frederik Krautwald",
-      "email": "fkrautwald@gmail.com"
-    }
-  ],
   "dependencies": {
     "@cycle/run": "*",
     "es6-map": "^0.1.4",
@@ -82,11 +22,6 @@
     "snabbdom-jsx": "^0.3.0",
     "string.prototype.startswith": "^0.2.0",
     "xstream": "10.x.x"
-  },
-  "directories": {},
-  "dist": {
-    "shasum": "207d3935f07c5e91674d6fb42561135d3df1e437",
-    "tarball": "https://registry.npmjs.org/@cycle/dom/-/dom-15.0.0-rc.2.tgz"
   },
   "engines": {
     "node": ">=0.10.0"
@@ -114,17 +49,11 @@
     }
   ],
   "name": "@cycle/dom",
-  "optionalDependencies": {},
   "peerDependencies": {
     "xstream": "*"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "readme": "ERROR: No README data found!",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cyclejs/cyclejs/tree/master/packages/dom"
   },
   "scripts": {
     "browserify": "../node_modules/.bin/browserify lib/index.js --global-transform=browserify-shim --standalone CycleDOM --exclude xstream --outfile dist/cycle-dom.js",
