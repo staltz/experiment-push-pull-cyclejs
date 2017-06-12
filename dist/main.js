@@ -5232,6 +5232,7 @@ exports.default = Stream;
 var Signal = (function () {
     function Signal(iterable) {
         this.iterable = iterable;
+        this.iterator = null;
     }
     Signal.prototype[Symbol.iterator] = function () {
         return this.init();
@@ -5240,7 +5241,10 @@ var Signal = (function () {
         return new Signal(iterable);
     };
     Signal.prototype.init = function () {
-        return this.iterable[Symbol.iterator]();
+        if (!this.iterator) {
+            this.iterator = this.iterable[Symbol.iterator]();
+        }
+        return this.iterator;
     };
     Signal.from = function (getter) {
         return Signal.create((_a = {},

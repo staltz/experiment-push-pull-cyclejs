@@ -48,9 +48,11 @@ export interface CombineSignature {
 export class Signal<T> implements Iterable<T> {
   constructor(iterable: Iterable<T>) {
     this.iterable = iterable;
+    this.iterator = null;
   }
 
   private iterable: Iterable<T>;
+  private iterator: Iterator<T> | null;
 
   public [Symbol.iterator](): Iterator<T> {
     return this.init();
@@ -61,7 +63,10 @@ export class Signal<T> implements Iterable<T> {
   }
 
   public init(): Iterator<T> {
-    return this.iterable[Symbol.iterator]();
+    if (!this.iterator) {
+      this.iterator = this.iterable[Symbol.iterator]();
+    }
+    return this.iterator;
   }
 
   public static from<T>(getter: Getter<T>): Signal<T> {
