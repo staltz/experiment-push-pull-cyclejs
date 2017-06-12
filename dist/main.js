@@ -32,10 +32,16 @@ exports.BodyDOMSource = BodyDOMSource;
 function constructDOM(parent, root) {
     if (typeof root.init === 'function') {
         var signal_1 = root.init();
-        var next = signal_1.next();
-        var textNode_1 = document.createTextNode(next.value);
+        var prev_1 = signal_1.next().value;
+        var textNode_1 = document.createTextNode(prev_1);
         parent.appendChild(textNode_1);
-        var setter = function () { textNode_1.nodeValue = signal_1.next().value; };
+        var setter = function () {
+            var next = signal_1.next().value;
+            if (next !== prev_1) {
+                textNode_1.nodeValue = signal_1.next().value;
+                prev_1 = next;
+            }
+        };
         return [undefined, [setter]];
     }
     var element = document.createElement(root.tagName);
@@ -56,8 +62,15 @@ function handleAttributes(element, attrs) {
                 element.setAttribute(key, value);
             }
             else {
-                var setter = function () { return element.setAttribute(key, value.next()); };
-                setter();
+                value.init();
+                var prev_2 = undefined;
+                var setter = function () {
+                    var next = value.next().value;
+                    if (next !== prev_2) {
+                        element.setAttribute(key, next);
+                        prev_2 = next;
+                    }
+                };
                 setters.push(setter);
             }
         });
