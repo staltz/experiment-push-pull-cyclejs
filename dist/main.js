@@ -37,7 +37,36 @@ run_1.run(cycle_onionify_1.default(main, 'state'), {
 });
 
 
-},{"@cycle/dom":8,"@cycle/run":14,"cycle-onionify":17,"xstream":37,"ysignal":38}],2:[function(require,module,exports){
+},{"@cycle/dom":13,"@cycle/run":20,"cycle-onionify":23,"xstream":44,"ysignal":45}],2:[function(require,module,exports){
+"use strict";
+var ysignal_1 = require("ysignal");
+var adapt_1 = require("@cycle/run/lib/adapt");
+var fromEvent_1 = require("./fromEvent");
+var BodyDOMSource = (function () {
+    function BodyDOMSource(_name) {
+        this._name = _name;
+    }
+    BodyDOMSource.prototype.select = function (selector) {
+        // This functionality is still undefined/undecided.
+        return this;
+    };
+    BodyDOMSource.prototype.elements = function () {
+        var out = ysignal_1.Signal.constant(document.body);
+        out._isCycleSource = this._name;
+        return out;
+    };
+    BodyDOMSource.prototype.events = function (eventType, options) {
+        if (options === void 0) { options = {}; }
+        var stream = fromEvent_1.fromEvent(document.body, eventType, options.useCapture, options.preventDefault);
+        var out = adapt_1.adapt(stream);
+        out._isCycleSource = this._name;
+        return out;
+    };
+    return BodyDOMSource;
+}());
+exports.BodyDOMSource = BodyDOMSource;
+
+},{"./fromEvent":10,"@cycle/run/lib/adapt":19,"ysignal":45}],3:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -57,13 +86,7 @@ var DocumentDOMSource = (function () {
     };
     DocumentDOMSource.prototype.events = function (eventType, options) {
         if (options === void 0) { options = {}; }
-        var stream;
-        if (options && typeof options.useCapture === 'boolean') {
-            stream = fromEvent_1.fromEvent(document, eventType, options.useCapture);
-        }
-        else {
-            stream = fromEvent_1.fromEvent(document, eventType);
-        }
+        var stream = fromEvent_1.fromEvent(document.body, eventType, options.useCapture, options.preventDefault);
         var out = adapt_1.adapt(stream);
         out._isCycleSource = this._name;
         return out;
@@ -72,13 +95,341 @@ var DocumentDOMSource = (function () {
 }());
 exports.DocumentDOMSource = DocumentDOMSource;
 
-},{"./fromEvent":5,"@cycle/run/lib/adapt":13,"xstream":37}],3:[function(require,module,exports){
+},{"./fromEvent":10,"@cycle/run/lib/adapt":19,"xstream":44}],4:[function(require,module,exports){
+"use strict";
+var ScopeChecker_1 = require("./ScopeChecker");
+var utils_1 = require("./utils");
+var matchesSelector_1 = require("./matchesSelector");
+function toElArray(input) {
+    return Array.prototype.slice.call(input);
+}
+var ElementFinder = (function () {
+    function ElementFinder(namespace, isolateModule) {
+        this.namespace = namespace;
+        this.isolateModule = isolateModule;
+    }
+    ElementFinder.prototype.call = function (rootElement) {
+        var namespace = this.namespace;
+        var selector = utils_1.getSelectors(namespace);
+        if (!selector) {
+            return rootElement;
+        }
+        var fullScope = utils_1.getFullScope(namespace);
+        var scopeChecker = new ScopeChecker_1.ScopeChecker(fullScope, this.isolateModule);
+        var topNode = fullScope
+            ? this.isolateModule.getElement(fullScope) || rootElement
+            : rootElement;
+        var topNodeMatchesSelector = !!fullScope && !!selector && matchesSelector_1.matchesSelector(topNode, selector);
+        return toElArray(topNode.querySelectorAll(selector))
+            .filter(scopeChecker.isDirectlyInScope, scopeChecker)
+            .concat(topNodeMatchesSelector ? [topNode] : []);
+    };
+    return ElementFinder;
+}());
+exports.ElementFinder = ElementFinder;
+
+},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":18}],5:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
+var ScopeChecker_1 = require("./ScopeChecker");
+var utils_1 = require("./utils");
+var matchesSelector_1 = require("./matchesSelector");
+/**
+ * Finds (with binary search) index of the destination that id equal to searchId
+ * among the destinations in the given array.
+ */
+function indexOf(arr, searchId) {
+    var minIndex = 0;
+    var maxIndex = arr.length - 1;
+    var currentIndex;
+    var current;
+    while (minIndex <= maxIndex) {
+        currentIndex = ((minIndex + maxIndex) / 2) | 0; // tslint:disable-line:no-bitwise
+        current = arr[currentIndex];
+        var currentId = current.id;
+        if (currentId < searchId) {
+            minIndex = currentIndex + 1;
+        }
+        else if (currentId > searchId) {
+            maxIndex = currentIndex - 1;
+        }
+        else {
+            return currentIndex;
+        }
+    }
+    return -1;
+}
+/**
+ * Manages "Event delegation", by connecting an origin with multiple
+ * destinations.
+ *
+ * Attaches a DOM event listener to the DOM element called the "origin",
+ * and delegates events to "destinations", which are subjects as outputs
+ * for the DOMSource. Simulates bubbling or capturing, with regards to
+ * isolation boundaries too.
+ */
+var EventDelegator = (function () {
+    function EventDelegator(origin, eventType, useCapture, isolateModule, preventDefault) {
+        if (preventDefault === void 0) { preventDefault = false; }
+        var _this = this;
+        this.origin = origin;
+        this.eventType = eventType;
+        this.useCapture = useCapture;
+        this.isolateModule = isolateModule;
+        this.preventDefault = preventDefault;
+        this.destinations = [];
+        this._lastId = 0;
+        if (preventDefault) {
+            if (useCapture) {
+                this.listener = function (ev) {
+                    ev.preventDefault();
+                    _this.capture(ev);
+                };
+            }
+            else {
+                this.listener = function (ev) {
+                    ev.preventDefault();
+                    _this.bubble(ev);
+                };
+            }
+        }
+        else {
+            if (useCapture) {
+                this.listener = function (ev) { return _this.capture(ev); };
+            }
+            else {
+                this.listener = function (ev) { return _this.bubble(ev); };
+            }
+        }
+        origin.addEventListener(eventType, this.listener, useCapture);
+    }
+    EventDelegator.prototype.updateOrigin = function (newOrigin) {
+        this.origin.removeEventListener(this.eventType, this.listener, this.useCapture);
+        newOrigin.addEventListener(this.eventType, this.listener, this.useCapture);
+        this.origin = newOrigin;
+    };
+    /**
+     * Creates a *new* destination given the namespace and returns the subject
+     * representing the destination of events. Is not referentially transparent,
+     * will always return a different output for the same input.
+     */
+    EventDelegator.prototype.createDestination = function (namespace) {
+        var _this = this;
+        var id = this._lastId++;
+        var selector = utils_1.getSelectors(namespace);
+        var scopeChecker = new ScopeChecker_1.ScopeChecker(utils_1.getFullScope(namespace), this.isolateModule);
+        var subject = xstream_1.default.create({
+            start: function () { },
+            stop: function () {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(function () {
+                        _this.removeDestination(id);
+                    });
+                }
+                else {
+                    _this.removeDestination(id);
+                }
+            }
+        });
+        var destination = { id: id, selector: selector, scopeChecker: scopeChecker, subject: subject };
+        this.destinations.push(destination);
+        return subject;
+    };
+    /**
+     * Removes the destination that has the given id.
+     */
+    EventDelegator.prototype.removeDestination = function (id) {
+        var i = indexOf(this.destinations, id);
+        i >= 0 && this.destinations.splice(i, 1); // tslint:disable-line:no-unused-expression
+    };
+    EventDelegator.prototype.capture = function (ev) {
+        var n = this.destinations.length;
+        for (var i = 0; i < n; i++) {
+            var dest = this.destinations[i];
+            if (matchesSelector_1.matchesSelector(ev.target, dest.selector)) {
+                dest.subject._n(ev);
+            }
+        }
+    };
+    EventDelegator.prototype.bubble = function (rawEvent) {
+        var origin = this.origin;
+        if (!origin.contains(rawEvent.currentTarget)) {
+            return;
+        }
+        var roof = origin.parentElement;
+        var ev = this.patchEvent(rawEvent);
+        for (var el = ev.target; el && el !== roof; el = el.parentElement) {
+            if (!origin.contains(el)) {
+                ev.stopPropagation();
+            }
+            if (ev.propagationHasBeenStopped) {
+                return;
+            }
+            this.matchEventAgainstDestinations(el, ev);
+        }
+    };
+    EventDelegator.prototype.patchEvent = function (event) {
+        var pEvent = event;
+        pEvent.propagationHasBeenStopped = false;
+        var oldStopPropagation = pEvent.stopPropagation;
+        pEvent.stopPropagation = function stopPropagation() {
+            oldStopPropagation.call(this);
+            this.propagationHasBeenStopped = true;
+        };
+        return pEvent;
+    };
+    EventDelegator.prototype.matchEventAgainstDestinations = function (el, ev) {
+        var n = this.destinations.length;
+        for (var i = 0; i < n; i++) {
+            var dest = this.destinations[i];
+            if (!dest.scopeChecker.isDirectlyInScope(el)) {
+                continue;
+            }
+            if (matchesSelector_1.matchesSelector(el, dest.selector)) {
+                this.mutateEventCurrentTarget(ev, el);
+                dest.subject._n(ev);
+            }
+        }
+    };
+    EventDelegator.prototype.mutateEventCurrentTarget = function (event, currentTargetElement) {
+        try {
+            Object.defineProperty(event, "currentTarget", {
+                value: currentTargetElement,
+                configurable: true
+            });
+        }
+        catch (err) {
+            console.log("please use event.ownerTarget");
+        }
+        event.ownerTarget = currentTargetElement;
+    };
+    return EventDelegator;
+}());
+exports.EventDelegator = EventDelegator;
+
+},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":18,"xstream":44}],6:[function(require,module,exports){
+"use strict";
+// const MapPolyfill: typeof Map = require('es6-map');
+var IsolateModule = (function () {
+    function IsolateModule() {
+        this.elementsByFullScope = new Map();
+        this.delegatorsByFullScope = new Map();
+        this.fullScopesBeingUpdated = [];
+    }
+    IsolateModule.prototype.cleanupVNode = function (_a) {
+        var data = _a.data, elm = _a.elm;
+        var fullScope = (data || {}).isolate || '';
+        var isCurrentElm = this.elementsByFullScope.get(fullScope) === elm;
+        var isScopeBeingUpdated = this.fullScopesBeingUpdated.indexOf(fullScope) >= 0;
+        if (fullScope && isCurrentElm && !isScopeBeingUpdated) {
+            this.elementsByFullScope.delete(fullScope);
+            this.delegatorsByFullScope.delete(fullScope);
+        }
+    };
+    IsolateModule.prototype.getElement = function (fullScope) {
+        return this.elementsByFullScope.get(fullScope);
+    };
+    IsolateModule.prototype.getFullScope = function (elm) {
+        var iterator = this.elementsByFullScope.entries();
+        for (var result = iterator.next(); !!result.value; result = iterator.next()) {
+            var _a = result.value, fullScope = _a[0], element = _a[1];
+            if (elm === element) {
+                return fullScope;
+            }
+        }
+        return '';
+    };
+    IsolateModule.prototype.addEventDelegator = function (fullScope, eventDelegator) {
+        var delegators = this.delegatorsByFullScope.get(fullScope);
+        if (!delegators) {
+            delegators = [];
+            this.delegatorsByFullScope.set(fullScope, delegators);
+        }
+        delegators[delegators.length] = eventDelegator;
+    };
+    IsolateModule.prototype.reset = function () {
+        this.elementsByFullScope.clear();
+        this.delegatorsByFullScope.clear();
+        this.fullScopesBeingUpdated = [];
+    };
+    IsolateModule.prototype.createModule = function () {
+        var self = this;
+        return {
+            create: function (oldVNode, vNode) {
+                var _a = oldVNode.data, oldData = _a === void 0 ? {} : _a;
+                var elm = vNode.elm, _b = vNode.data, data = _b === void 0 ? {} : _b;
+                var oldFullScope = oldData.isolate || '';
+                var fullScope = data.isolate || '';
+                // Update data structures with the newly-created element
+                if (fullScope) {
+                    self.fullScopesBeingUpdated.push(fullScope);
+                    if (oldFullScope) {
+                        self.elementsByFullScope.delete(oldFullScope);
+                    }
+                    self.elementsByFullScope.set(fullScope, elm);
+                    // Update delegators for this scope
+                    var delegators = self.delegatorsByFullScope.get(fullScope);
+                    if (delegators) {
+                        var len = delegators.length;
+                        for (var i = 0; i < len; ++i) {
+                            delegators[i].updateOrigin(elm);
+                        }
+                    }
+                }
+                if (oldFullScope && !fullScope) {
+                    self.elementsByFullScope.delete(fullScope);
+                }
+            },
+            update: function (oldVNode, vNode) {
+                var _a = oldVNode.data, oldData = _a === void 0 ? {} : _a;
+                var elm = vNode.elm, _b = vNode.data, data = _b === void 0 ? {} : _b;
+                var oldFullScope = oldData.isolate || '';
+                var fullScope = data.isolate || '';
+                // Same element, but different scope, so update the data structures
+                if (fullScope && fullScope !== oldFullScope) {
+                    if (oldFullScope) {
+                        self.elementsByFullScope.delete(oldFullScope);
+                    }
+                    self.elementsByFullScope.set(fullScope, elm);
+                    var delegators = self.delegatorsByFullScope.get(oldFullScope);
+                    if (delegators) {
+                        self.delegatorsByFullScope.delete(oldFullScope);
+                        self.delegatorsByFullScope.set(fullScope, delegators);
+                    }
+                }
+                // Same element, but lost the scope, so update the data structures
+                if (oldFullScope && !fullScope) {
+                    self.elementsByFullScope.delete(oldFullScope);
+                    self.delegatorsByFullScope.delete(oldFullScope);
+                }
+            },
+            destroy: function (vNode) {
+                self.cleanupVNode(vNode);
+            },
+            remove: function (vNode, cb) {
+                self.cleanupVNode(vNode);
+                cb();
+            },
+            post: function () {
+                self.fullScopesBeingUpdated = [];
+            }
+        };
+    };
+    return IsolateModule;
+}());
+exports.IsolateModule = IsolateModule;
+
+},{}],7:[function(require,module,exports){
+"use strict";
+var xstream_1 = require("xstream");
+var dropRepeats_1 = require("xstream/extra/dropRepeats");
 var adapt_1 = require("@cycle/run/lib/adapt");
 var DocumentDOMSource_1 = require("./DocumentDOMSource");
+var BodyDOMSource_1 = require("./BodyDOMSource");
 var fromEvent_1 = require("./fromEvent");
+var ElementFinder_1 = require("./ElementFinder");
 var isolate_1 = require("./isolate");
+var EventDelegator_1 = require("./EventDelegator");
 var utils_1 = require("./utils");
 var eventTypesThatDontBubble = [
     "blur",
@@ -120,23 +471,60 @@ function determineUseCapture(eventType, options) {
     }
     return result;
 }
+function filterBasedOnIsolation(domSource, fullScope) {
+    return function filterBasedOnIsolationOperator(rootElementS) {
+        var initialState = {
+            wasIsolated: false,
+            shouldPass: false,
+            element: null
+        };
+        return rootElementS
+            .fold(function checkIfShouldPass(state, element) {
+            var isIsolated = !!domSource._isolateModule.getElement(fullScope);
+            state.shouldPass = isIsolated && !state.wasIsolated;
+            state.wasIsolated = isIsolated;
+            state.element = element;
+            return state;
+        }, initialState)
+            .drop(1)
+            .filter(function (s) { return s.shouldPass; })
+            .map(function (s) { return s.element; });
+    };
+}
 var MainDOMSource = (function () {
-    function MainDOMSource(_rootElementS, _rootElementIter, _namespace, _name) {
+    function MainDOMSource(_rootElementS, _rootElementIter, _namespace, _isolateModule, _delegators, _name) {
         if (_namespace === void 0) { _namespace = []; }
         var _this = this;
         this._rootElementS = _rootElementS;
         this._rootElementIter = _rootElementIter;
         this._namespace = _namespace;
+        this._isolateModule = _isolateModule;
+        this._delegators = _delegators;
         this._name = _name;
         this.isolateSource = isolate_1.isolateSource;
         this.isolateSink = function (sink, scope) {
-            var prevFullScope = utils_1.getFullScope(_this._namespace);
-            var nextFullScope = [prevFullScope, scope].filter(function (x) { return !!x; }).join('-');
-            return isolate_1.isolateSink(sink, nextFullScope);
+            if (scope === ':root') {
+                return sink;
+            }
+            else if (utils_1.isClassOrId(scope)) {
+                return isolate_1.siblingIsolateSink(sink, scope);
+            }
+            else {
+                var prevFullScope = utils_1.getFullScope(_this._namespace);
+                var nextFullScope = [prevFullScope, scope].filter(function (x) { return !!x; }).join('-');
+                return isolate_1.totalIsolateSink(sink, nextFullScope);
+            }
         };
     }
     MainDOMSource.prototype.elements = function () {
-        var outputS = this._rootElementS;
+        var outputS;
+        if (this._namespace.length === 0) {
+            outputS = this._rootElementS;
+        }
+        else {
+            var elementFinder_1 = new ElementFinder_1.ElementFinder(this._namespace, this._isolateModule);
+            outputS = this._rootElementS.map(function (el) { return elementFinder_1.call(el); });
+        }
         var out = outputS;
         out._isCycleSource = this._name;
         return out;
@@ -156,38 +544,85 @@ var MainDOMSource = (function () {
         if (selector === 'document') {
             return new DocumentDOMSource_1.DocumentDOMSource(this._name);
         }
-        // if (selector === 'body') {
-        //   return new BodyDOMSource(this._name);
-        // }
+        if (selector === 'body') {
+            return new BodyDOMSource_1.BodyDOMSource(this._name);
+        }
         var trimmedSelector = selector.trim();
         var childNamespace = trimmedSelector === ":root"
             ? this._namespace
             : this._namespace.concat(trimmedSelector);
-        return new MainDOMSource(this._rootElementS, this._rootElementIter, childNamespace, this._name);
+        return new MainDOMSource(this._rootElementS, this._rootElementIter, childNamespace, this._isolateModule, this._delegators, this._name);
     };
     MainDOMSource.prototype.events = function (eventType, options) {
-        var _this = this;
         if (options === void 0) { options = {}; }
         if (typeof eventType !== "string") {
             throw new Error("DOM driver's events() expects argument to be a " +
                 "string representing the event type to listen for.");
         }
         var useCapture = determineUseCapture(eventType, options);
+        var namespace = this._namespace;
+        var fullScope = utils_1.getFullScope(namespace);
+        var keyParts = [eventType, useCapture];
+        if (fullScope) {
+            keyParts.push(fullScope);
+        }
+        var key = keyParts.join('~');
+        var domSource = this;
         var domInteractive$ = fromEvent_1.fromEvent(document, 'readystatechange', false)
             .filter(function () { return document.readyState === 'interactive'; })
             .take(1);
         var ready$ = document.readyState === 'loading'
             ? domInteractive$
             : xstream_1.Stream.of(null);
+        var animationFrame$ = xstream_1.Stream.create({
+            start: function (listener) {
+                var animationFrameProducer = this;
+                this.running = true;
+                requestAnimationFrame(function again2() {
+                    listener.next(null);
+                    if (animationFrameProducer.running) {
+                        requestAnimationFrame(again2);
+                    }
+                });
+            },
+            stop: function () {
+                this.running = false;
+            }
+        });
+        var rootElementS = fullScope
+            ? this._rootElementS.compose(filterBasedOnIsolation(domSource, fullScope))
+            : this._rootElementS;
         var event$ = ready$
-            .map(function () {
-            var next = _this._rootElementIter.next();
-            if (next.done) {
-                return xstream_1.Stream.empty();
+            .mapTo(animationFrame$)
+            .flatten()
+            .sample(rootElementS)
+            .map(function (_a) {
+            var _ = _a[0], element = _a[1];
+            return element;
+        })
+            .compose(dropRepeats_1.default())
+            .map(function setupEventDelegatorOnTopElement(rootElement) {
+            // Event listener just for the root element
+            if (!namespace || namespace.length === 0) {
+                return fromEvent_1.fromEvent(rootElement, eventType, useCapture, options.preventDefault);
+            }
+            // Event listener on the origin element as an EventDelegator
+            var delegators = domSource._delegators;
+            var origin = domSource._isolateModule.getElement(fullScope) || rootElement;
+            var delegator;
+            if (delegators.has(key)) {
+                delegator = delegators.get(key);
+                delegator.updateOrigin(origin);
             }
             else {
-                return fromEvent_1.fromEvent(next.value, eventType, useCapture);
+                delegator = new EventDelegator_1.EventDelegator(origin, eventType, useCapture, domSource._isolateModule, options.preventDefault);
+                delegators.set(key, delegator);
             }
+            if (fullScope) {
+                domSource._isolateModule.addEventDelegator(fullScope, delegator);
+            }
+            var subject = delegator.createDestination(namespace);
+            return subject;
         })
             .flatten();
         var out = adapt_1.adapt(event$);
@@ -202,7 +637,36 @@ var MainDOMSource = (function () {
 }());
 exports.MainDOMSource = MainDOMSource;
 
-},{"./DocumentDOMSource":2,"./fromEvent":5,"./isolate":9,"./utils":12,"@cycle/run/lib/adapt":13,"xstream":37}],4:[function(require,module,exports){
+},{"./BodyDOMSource":2,"./DocumentDOMSource":3,"./ElementFinder":4,"./EventDelegator":5,"./fromEvent":10,"./isolate":14,"./utils":18,"@cycle/run/lib/adapt":19,"xstream":44,"xstream/extra/dropRepeats":43}],8:[function(require,module,exports){
+"use strict";
+var ScopeChecker = (function () {
+    function ScopeChecker(fullScope, isolateModule) {
+        this.fullScope = fullScope;
+        this.isolateModule = isolateModule;
+    }
+    /**
+     * Checks whether the given element is *directly* in the scope of this
+     * scope checker. Being contained *indirectly* through other scopes
+     * is not valid. This is crucial for implementing parent-child isolation,
+     * so that the parent selectors don't search inside a child scope.
+     */
+    ScopeChecker.prototype.isDirectlyInScope = function (leaf) {
+        for (var el = leaf; el; el = el.parentElement) {
+            var fullScope = ''; // this.isolateModule.getFullScope(el);
+            if (fullScope && fullScope !== this.fullScope) {
+                return false;
+            }
+            if (fullScope) {
+                return true;
+            }
+        }
+        return true;
+    };
+    return ScopeChecker;
+}());
+exports.ScopeChecker = ScopeChecker;
+
+},{}],9:[function(require,module,exports){
 "use strict";
 var hyperscript_1 = require("./hyperscript");
 var classNameFromVNode_1 = require("snabbdom-selector/lib/commonjs/classNameFromVNode");
@@ -239,28 +703,37 @@ var VNodeWrapper = (function () {
 }());
 exports.VNodeWrapper = VNodeWrapper;
 
-},{"./hyperscript":7,"snabbdom-selector/lib/commonjs/classNameFromVNode":21,"snabbdom-selector/lib/commonjs/selectorParser":22}],5:[function(require,module,exports){
+},{"./hyperscript":12,"snabbdom-selector/lib/commonjs/classNameFromVNode":27,"snabbdom-selector/lib/commonjs/selectorParser":28}],10:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
-function fromEvent(element, eventName, useCapture) {
+function fromEvent(element, eventName, useCapture, preventDefault) {
     if (useCapture === void 0) { useCapture = false; }
+    if (preventDefault === void 0) { preventDefault = false; }
     return xstream_1.Stream.create({
         element: element,
         next: null,
         start: function start(listener) {
-            this.next = function next(event) {
-                listener.next(event);
-            };
+            if (preventDefault) {
+                this.next = function next(event) {
+                    event.preventDefault();
+                    listener.next(event);
+                };
+            }
+            else {
+                this.next = function next(event) {
+                    listener.next(event);
+                };
+            }
             this.element.addEventListener(eventName, this.next, useCapture);
         },
         stop: function stop() {
             this.element.removeEventListener(eventName, this.next, useCapture);
-        },
+        }
     });
 }
 exports.fromEvent = fromEvent;
 
-},{"xstream":37}],6:[function(require,module,exports){
+},{"xstream":44}],11:[function(require,module,exports){
 "use strict";
 var hyperscript_1 = require("./hyperscript");
 function isValidString(param) {
@@ -493,7 +966,7 @@ TAG_NAMES.forEach(function (n) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exported;
 
-},{"./hyperscript":7}],7:[function(require,module,exports){
+},{"./hyperscript":12}],12:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("snabbdom/vnode");
 var is = require("snabbdom/is");
@@ -551,7 +1024,7 @@ function h(sel, b, c) {
 }
 exports.h = h;
 
-},{"snabbdom/is":25,"snabbdom/vnode":33}],8:[function(require,module,exports){
+},{"snabbdom/is":31,"snabbdom/vnode":39}],13:[function(require,module,exports){
 "use strict";
 var thunk_1 = require("snabbdom/thunk");
 exports.thunk = thunk_1.thunk;
@@ -746,44 +1219,71 @@ exports.u = hyperscript_helpers_1.default.u;
 exports.ul = hyperscript_helpers_1.default.ul;
 exports.video = hyperscript_helpers_1.default.video;
 
-},{"./MainDOMSource":3,"./hyperscript":7,"./hyperscript-helpers":6,"./makeDOMDriver":10,"snabbdom/thunk":32}],9:[function(require,module,exports){
+},{"./MainDOMSource":7,"./hyperscript":12,"./hyperscript-helpers":11,"./makeDOMDriver":15,"snabbdom/thunk":38}],14:[function(require,module,exports){
 "use strict";
+var vnode_1 = require("snabbdom/vnode");
 var utils_1 = require("./utils");
-function isolateSource(source, scope) {
+function totalIsolateSource(source, scope) {
     return source.select(utils_1.SCOPE_PREFIX + scope);
 }
+function siblingIsolateSource(source, scope) {
+    return source.select(scope);
+}
+function isolateSource(source, scope) {
+    if (scope === ':root') {
+        return source;
+    }
+    else if (utils_1.isClassOrId(scope)) {
+        return siblingIsolateSource(source, scope);
+    }
+    else {
+        return totalIsolateSource(source, scope);
+    }
+}
 exports.isolateSource = isolateSource;
-function isolateSink(sink, fullScope) {
-    return sink.map(function (vnode) {
+function siblingIsolateSink(sink, scope) {
+    return sink.map(function (node) {
+        return node
+            ? vnode_1.vnode(node.sel + scope, node.data, node.children, node.text, node.elm)
+            : node;
+    });
+}
+exports.siblingIsolateSink = siblingIsolateSink;
+function totalIsolateSink(sink, fullScope) {
+    return sink.map(function (node) {
+        if (!node) {
+            return node;
+        }
         // Ignore if already had up-to-date full scope in vnode.data.isolate
-        if (vnode.data && vnode.data.isolate) {
-            var isolateData = vnode.data.isolate;
+        if (node.data && node.data.isolate) {
+            var isolateData = node.data.isolate;
             var prevFullScopeNum = isolateData.replace(/(cycle|\-)/g, '');
             var fullScopeNum = fullScope.replace(/(cycle|\-)/g, '');
             if (isNaN(parseInt(prevFullScopeNum)) ||
                 isNaN(parseInt(fullScopeNum)) ||
                 prevFullScopeNum > fullScopeNum) {
                 // > is lexicographic string comparison
-                return vnode;
+                return node;
             }
         }
         // Insert up-to-date full scope in vnode.data.isolate, and also a key if needed
-        vnode.data = vnode.data || {};
-        vnode.data.isolate = fullScope;
-        if (typeof vnode.key === 'undefined') {
-            vnode.key = utils_1.SCOPE_PREFIX + fullScope;
+        node.data = node.data || {};
+        node.data.isolate = fullScope;
+        if (typeof node.key === 'undefined') {
+            node.key = utils_1.SCOPE_PREFIX + fullScope;
         }
-        return vnode;
+        return node;
     });
 }
-exports.isolateSink = isolateSink;
+exports.totalIsolateSink = totalIsolateSink;
 
-},{"./utils":12}],10:[function(require,module,exports){
+},{"./utils":18,"snabbdom/vnode":39}],15:[function(require,module,exports){
 "use strict";
 var snabbdom_1 = require("snabbdom");
 var ysignal_1 = require("ysignal");
 var MainDOMSource_1 = require("./MainDOMSource");
 var VNodeWrapper_1 = require("./VNodeWrapper");
+var IsolateModule_1 = require("./IsolateModule");
 var utils_1 = require("./utils");
 var modules_1 = require("./modules");
 function makeDOMDriverInputGuard(modules) {
@@ -825,9 +1325,11 @@ function makeDOMDriver(container, options) {
         options = {};
     }
     var modules = options.modules || modules_1.default;
-    var patch = snabbdom_1.init(modules);
+    var isolateModule = new IsolateModule_1.IsolateModule();
+    var patch = snabbdom_1.init([isolateModule.createModule()].concat(modules));
     var rootElement = utils_1.getElement(container) || document.body;
     var vnodeWrapper = new VNodeWrapper_1.VNodeWrapper(rootElement);
+    var delegators = new Map();
     makeDOMDriverInputGuard(modules);
     function DOMDriver(vnodeProxy, name) {
         if (name === void 0) { name = 'DOM'; }
@@ -860,13 +1362,45 @@ function makeDOMDriver(container, options) {
                 requestAnimationFrame(again2);
             });
         }
-        return new MainDOMSource_1.MainDOMSource(rootElementS, iter, [], name);
+        return new MainDOMSource_1.MainDOMSource(rootElementS, iter, [], isolateModule, delegators, name);
     }
     return DOMDriver;
 }
 exports.makeDOMDriver = makeDOMDriver;
 
-},{"./MainDOMSource":3,"./VNodeWrapper":4,"./modules":11,"./utils":12,"snabbdom":31,"ysignal":38}],11:[function(require,module,exports){
+},{"./IsolateModule":6,"./MainDOMSource":7,"./VNodeWrapper":9,"./modules":17,"./utils":18,"snabbdom":37,"ysignal":45}],16:[function(require,module,exports){
+"use strict";
+function createMatchesSelector() {
+    var vendor;
+    try {
+        var proto = Element.prototype;
+        vendor =
+            proto.matches ||
+                proto.matchesSelector ||
+                proto.webkitMatchesSelector ||
+                proto.mozMatchesSelector ||
+                proto.msMatchesSelector ||
+                proto.oMatchesSelector;
+    }
+    catch (err) {
+        vendor = null;
+    }
+    return function match(elem, selector) {
+        if (vendor) {
+            return vendor.call(elem, selector);
+        }
+        var nodes = elem.parentNode.querySelectorAll(selector);
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i] === elem) {
+                return true;
+            }
+        }
+        return false;
+    };
+}
+exports.matchesSelector = createMatchesSelector();
+
+},{}],17:[function(require,module,exports){
 "use strict";
 var class_1 = require("snabbdom/modules/class");
 exports.ClassModule = class_1.default;
@@ -888,7 +1422,7 @@ var modules = [
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = modules;
 
-},{"snabbdom/modules/attributes":26,"snabbdom/modules/class":27,"snabbdom/modules/dataset":28,"snabbdom/modules/props":29,"snabbdom/modules/style":30}],12:[function(require,module,exports){
+},{"snabbdom/modules/attributes":32,"snabbdom/modules/class":33,"snabbdom/modules/dataset":34,"snabbdom/modules/props":35,"snabbdom/modules/style":36}],18:[function(require,module,exports){
 "use strict";
 function isElement(obj) {
     return typeof HTMLElement === "object"
@@ -899,6 +1433,10 @@ function isElement(obj) {
             (obj.nodeType === 1 || obj.nodeType === 11) &&
             typeof obj.nodeName === "string";
 }
+function isClassOrId(str) {
+    return str.length > 1 && (str[0] === '.' || str[0] === '#');
+}
+exports.isClassOrId = isClassOrId;
 exports.SCOPE_PREFIX = "$$CYCLEDOM$$-";
 function getElement(selectors) {
     var domElement = typeof selectors === 'string'
@@ -930,7 +1468,7 @@ function getSelectors(namespace) {
 }
 exports.getSelectors = getSelectors;
 
-},{}],13:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 var adaptStream = function (x) { return x; };
 function setAdapt(f) {
@@ -942,7 +1480,7 @@ function adapt(stream) {
 }
 exports.adapt = adapt;
 
-},{}],14:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -955,18 +1493,24 @@ var PushPullProxy = (function (_super) {
     __extends(PushPullProxy, _super);
     function PushPullProxy() {
         var _this = _super.call(this, undefined) || this;
+        var proxy = _this;
         _this.iterator = {
             next: function () {
-                return { done: false, value: undefined };
+                if (proxy.target) {
+                    return proxy.target.next();
+                }
+                else {
+                    return { done: false, value: undefined };
+                }
             }
         };
         return _this;
     }
     PushPullProxy.prototype[Symbol.iterator] = function () {
-        return this.iterator;
+        return this.target || this.iterator;
     };
     PushPullProxy.prototype.imitateIterator = function (iterator) {
-        this.iterator = iterator;
+        this.target = iterator;
     };
     return PushPullProxy;
 }(xstream_1.MemoryStream));
@@ -994,7 +1538,7 @@ function callDrivers(drivers, sinkProxies) {
     for (var name_2 in drivers) {
         if (drivers.hasOwnProperty(name_2)) {
             sources[name_2] = drivers[name_2](sinkProxies[name_2], name_2);
-            if (sources[name_2] && typeof sources[name_2] === "object") {
+            if (sources[name_2] && typeof sources[name_2] === 'object') {
                 sources[name_2]._isCycleSource = name_2;
             }
         }
@@ -1006,7 +1550,7 @@ function adaptSources(sources) {
     for (var name_3 in sources) {
         if (sources.hasOwnProperty(name_3) &&
             sources[name_3] &&
-            typeof sources[name_3]["shamefullySendNext"] === "function") {
+            typeof sources[name_3]['shamefullySendNext'] === 'function') {
             sources[name_3] = adapt_1.adapt(sources[name_3]);
         }
     }
@@ -1024,8 +1568,8 @@ function replicateMany(sinks, sinkProxies) {
             complete: function () { }
         };
     });
-    var streamSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]["subscribe"] === "function"; });
-    var signalSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]["init"] === "function"; });
+    var streamSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]['subscribe'] === 'function'; });
+    var signalSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]['init'] === 'function'; });
     var subscriptions = streamSinkNames.map(function (name) {
         return xstream_1.default.fromObservable(sinks[name]).subscribe(replicators[name]);
     });
@@ -1116,7 +1660,7 @@ function setup(main, drivers) {
     var sources = callDrivers(drivers, sinkProxies);
     var adaptedSources = adaptSources(sources);
     var sinks = main(adaptedSources);
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
         window.Cyclejs = window.Cyclejs || {};
         window.Cyclejs.sinks = sinks;
     }
@@ -1160,9 +1704,9 @@ exports.setup = setup;
 function run(main, drivers) {
     // TODO this any below was added here with ysignal changes
     var _a = setup(main, drivers), run = _a.run, sinks = _a.sinks;
-    if (typeof window !== "undefined" &&
-        window["CyclejsDevTool_startGraphSerializer"]) {
-        window["CyclejsDevTool_startGraphSerializer"](sinks);
+    if (typeof window !== 'undefined' &&
+        window['CyclejsDevTool_startGraphSerializer']) {
+        window['CyclejsDevTool_startGraphSerializer'](sinks);
     }
     return run();
 }
@@ -1170,7 +1714,7 @@ exports.run = run;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = run;
 
-},{"./adapt":13,"xstream":37}],15:[function(require,module,exports){
+},{"./adapt":19,"xstream":44}],21:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -1212,7 +1756,7 @@ var CollectionSource = (function () {
 }());
 exports.CollectionSource = CollectionSource;
 
-},{"./pickCombine":19,"./pickMerge":20,"@cycle/run/lib/adapt":13}],16:[function(require,module,exports){
+},{"./pickCombine":25,"./pickMerge":26,"@cycle/run/lib/adapt":19}],22:[function(require,module,exports){
 "use strict";
 var __assign = (this && this.__assign) || Object.assign || function(t) {
     for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -1442,7 +1986,7 @@ var StateSource = (function () {
 }());
 exports.StateSource = StateSource;
 
-},{}],17:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var onionify_1 = require("./onionify");
@@ -1500,7 +2044,7 @@ exports.pickCombine = pickCombine_1.pickCombine;
  */
 exports.default = onionify_1.onionify;
 
-},{"./CollectionSource":15,"./StateSource":16,"./onionify":18,"./pickCombine":19,"./pickMerge":20}],18:[function(require,module,exports){
+},{"./CollectionSource":21,"./StateSource":22,"./onionify":24,"./pickCombine":25,"./pickMerge":26}],24:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var xstream_1 = require("xstream");
@@ -1553,7 +2097,7 @@ function onionify(main, name) {
 }
 exports.onionify = onionify;
 
-},{"./StateSource":16,"xstream":37,"ysignal":38}],19:[function(require,module,exports){
+},{"./StateSource":22,"xstream":44,"ysignal":45}],25:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var xstream_1 = require("xstream");
@@ -1701,7 +2245,7 @@ function pickCombine(selector) {
 }
 exports.pickCombine = pickCombine;
 
-},{"xstream":37}],20:[function(require,module,exports){
+},{"xstream":44}],26:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var xstream_1 = require("xstream");
@@ -1810,7 +2354,7 @@ function pickMerge(selector) {
 }
 exports.pickMerge = pickMerge;
 
-},{"xstream":37}],21:[function(require,module,exports){
+},{"xstream":44}],27:[function(require,module,exports){
 "use strict";
 var selectorParser_1 = require('./selectorParser');
 function classNameFromVNode(vNode) {
@@ -1831,7 +2375,7 @@ function classNameFromVNode(vNode) {
 }
 exports.classNameFromVNode = classNameFromVNode;
 
-},{"./selectorParser":22}],22:[function(require,module,exports){
+},{"./selectorParser":28}],28:[function(require,module,exports){
 "use strict";
 function selectorParser(_a) {
     var sel = _a.sel;
@@ -1852,7 +2396,7 @@ function selectorParser(_a) {
 }
 exports.selectorParser = selectorParser;
 
-},{}],23:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -1912,7 +2456,7 @@ exports.h = h;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = h;
 
-},{"./is":25,"./vnode":33}],24:[function(require,module,exports){
+},{"./is":31,"./vnode":39}],30:[function(require,module,exports){
 "use strict";
 function createElement(tagName) {
     return document.createElement(tagName);
@@ -1959,7 +2503,7 @@ exports.htmlDomApi = {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.htmlDomApi;
 
-},{}],25:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 "use strict";
 exports.array = Array.isArray;
 function primitive(s) {
@@ -1967,7 +2511,7 @@ function primitive(s) {
 }
 exports.primitive = primitive;
 
-},{}],26:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 "use strict";
 var NamespaceURIs = {
     "xlink": "http://www.w3.org/1999/xlink"
@@ -2019,7 +2563,7 @@ exports.attributesModule = { create: updateAttrs, update: updateAttrs };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.attributesModule;
 
-},{}],27:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 "use strict";
 function updateClass(oldVnode, vnode) {
     var cur, name, elm = vnode.elm, oldClass = oldVnode.data.class, klass = vnode.data.class;
@@ -2045,7 +2589,7 @@ exports.classModule = { create: updateClass, update: updateClass };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.classModule;
 
-},{}],28:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 function updateDataset(oldVnode, vnode) {
     var elm = vnode.elm, oldDataset = oldVnode.data.dataset, dataset = vnode.data.dataset, key;
@@ -2070,7 +2614,7 @@ exports.datasetModule = { create: updateDataset, update: updateDataset };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.datasetModule;
 
-},{}],29:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 "use strict";
 function updateProps(oldVnode, vnode) {
     var key, cur, old, elm = vnode.elm, oldProps = oldVnode.data.props, props = vnode.data.props;
@@ -2097,7 +2641,7 @@ exports.propsModule = { create: updateProps, update: updateProps };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.propsModule;
 
-},{}],30:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 "use strict";
 var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
 var nextFrame = function (fn) { raf(function () { raf(fn); }); };
@@ -2184,7 +2728,7 @@ exports.styleModule = {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.styleModule;
 
-},{}],31:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -2470,7 +3014,7 @@ function init(modules, domApi) {
 }
 exports.init = init;
 
-},{"./h":23,"./htmldomapi":24,"./is":25,"./thunk":32,"./vnode":33}],32:[function(require,module,exports){
+},{"./h":29,"./htmldomapi":30,"./is":31,"./thunk":38,"./vnode":39}],38:[function(require,module,exports){
 "use strict";
 var h_1 = require("./h");
 function copyToThunk(vnode, thunk) {
@@ -2517,7 +3061,7 @@ exports.thunk = function thunk(sel, key, fn, args) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.thunk;
 
-},{"./h":23}],33:[function(require,module,exports){
+},{"./h":29}],39:[function(require,module,exports){
 "use strict";
 function vnode(sel, data, children, text, elm) {
     var key = data === undefined ? undefined : data.key;
@@ -2528,10 +3072,10 @@ exports.vnode = vnode;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vnode;
 
-},{}],34:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 module.exports = require('./lib/index');
 
-},{"./lib/index":35}],35:[function(require,module,exports){
+},{"./lib/index":41}],41:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -2563,7 +3107,7 @@ if (typeof self !== 'undefined') {
 var result = (0, _ponyfill2['default'])(root);
 exports['default'] = result;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":36}],36:[function(require,module,exports){
+},{"./ponyfill":42}],42:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2587,7 +3131,130 @@ function symbolObservablePonyfill(root) {
 
 	return result;
 };
-},{}],37:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
+"use strict";
+var index_1 = require("../index");
+var empty = {};
+var DropRepeatsOperator = (function () {
+    function DropRepeatsOperator(ins, fn) {
+        this.ins = ins;
+        this.fn = fn;
+        this.type = 'dropRepeats';
+        this.out = null;
+        this.v = empty;
+    }
+    DropRepeatsOperator.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    DropRepeatsOperator.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = null;
+        this.v = empty;
+    };
+    DropRepeatsOperator.prototype.isEq = function (x, y) {
+        return this.fn ? this.fn(x, y) : x === y;
+    };
+    DropRepeatsOperator.prototype._n = function (t) {
+        var u = this.out;
+        if (!u)
+            return;
+        var v = this.v;
+        if (v !== empty && this.isEq(t, v))
+            return;
+        this.v = t;
+        u._n(t);
+    };
+    DropRepeatsOperator.prototype._e = function (err) {
+        var u = this.out;
+        if (!u)
+            return;
+        u._e(err);
+    };
+    DropRepeatsOperator.prototype._c = function () {
+        var u = this.out;
+        if (!u)
+            return;
+        u._c();
+    };
+    return DropRepeatsOperator;
+}());
+exports.DropRepeatsOperator = DropRepeatsOperator;
+/**
+ * Drops consecutive duplicate values in a stream.
+ *
+ * Marble diagram:
+ *
+ * ```text
+ * --1--2--1--1--1--2--3--4--3--3|
+ *     dropRepeats
+ * --1--2--1--------2--3--4--3---|
+ * ```
+ *
+ * Example:
+ *
+ * ```js
+ * import dropRepeats from 'xstream/extra/dropRepeats'
+ *
+ * const stream = xs.of(1, 2, 1, 1, 1, 2, 3, 4, 3, 3)
+ *   .compose(dropRepeats())
+ *
+ * stream.addListener({
+ *   next: i => console.log(i),
+ *   error: err => console.error(err),
+ *   complete: () => console.log('completed')
+ * })
+ * ```
+ *
+ * ```text
+ * > 1
+ * > 2
+ * > 1
+ * > 2
+ * > 3
+ * > 4
+ * > 3
+ * > completed
+ * ```
+ *
+ * Example with a custom isEqual function:
+ *
+ * ```js
+ * import dropRepeats from 'xstream/extra/dropRepeats'
+ *
+ * const stream = xs.of('a', 'b', 'a', 'A', 'B', 'b')
+ *   .compose(dropRepeats((x, y) => x.toLowerCase() === y.toLowerCase()))
+ *
+ * stream.addListener({
+ *   next: i => console.log(i),
+ *   error: err => console.error(err),
+ *   complete: () => console.log('completed')
+ * })
+ * ```
+ *
+ * ```text
+ * > a
+ * > b
+ * > a
+ * > B
+ * > completed
+ * ```
+ *
+ * @param {Function} isEqual An optional function of type
+ * `(x: T, y: T) => boolean` that takes an event from the input stream and
+ * checks if it is equal to previous event, by returning a boolean.
+ * @return {Stream}
+ */
+function dropRepeats(isEqual) {
+    if (isEqual === void 0) { isEqual = void 0; }
+    return function dropRepeatsOperator(ins) {
+        return new index_1.Stream(new DropRepeatsOperator(ins, isEqual));
+    };
+}
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = dropRepeats;
+
+},{"../index":44}],44:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -2663,7 +3330,7 @@ var Observer = (function () {
 }());
 var FromObservable = (function () {
     function FromObservable(observable) {
-        this.type = "fromObservable";
+        this.type = 'fromObservable';
         this.ins = observable;
         this.active = false;
     }
@@ -2683,7 +3350,7 @@ var FromObservable = (function () {
 }());
 var Merge = (function () {
     function Merge(insArr) {
-        this.type = "merge";
+        this.type = 'merge';
         this.insArr = insArr;
         this.out = NO;
         this.ac = 0;
@@ -2760,7 +3427,7 @@ var CombineListener = (function () {
 }());
 var Combine = (function () {
     function Combine(insArr) {
-        this.type = "combine";
+        this.type = 'combine';
         this.insArr = insArr;
         this.out = NO;
         this.ils = [];
@@ -2804,7 +3471,7 @@ var Combine = (function () {
 }());
 var FromArray = (function () {
     function FromArray(a) {
-        this.type = "fromArray";
+        this.type = 'fromArray';
         this.a = a;
     }
     FromArray.prototype._start = function (out) {
@@ -2819,7 +3486,7 @@ var FromArray = (function () {
 }());
 var FromPromise = (function () {
     function FromPromise(p) {
-        this.type = "fromPromise";
+        this.type = 'fromPromise';
         this.on = false;
         this.p = p;
     }
@@ -2848,7 +3515,7 @@ var FromPromise = (function () {
 }());
 var Periodic = (function () {
     function Periodic(period) {
-        this.type = "periodic";
+        this.type = 'periodic';
         this.period = period;
         this.intervalID = -1;
         this.i = 0;
@@ -2870,15 +3537,15 @@ var Periodic = (function () {
 }());
 var Debug = (function () {
     function Debug(ins, arg) {
-        this.type = "debug";
+        this.type = 'debug';
         this.ins = ins;
         this.out = NO;
         this.s = noop;
-        this.l = "";
-        if (typeof arg === "string") {
+        this.l = '';
+        if (typeof arg === 'string') {
             this.l = arg;
         }
-        else if (typeof arg === "function") {
+        else if (typeof arg === 'function') {
             this.s = arg;
         }
     }
@@ -2904,7 +3571,7 @@ var Debug = (function () {
             }
         }
         else if (l) {
-            console.log(l + ":", t);
+            console.log(l + ':', t);
         }
         else {
             console.log(t);
@@ -2927,7 +3594,7 @@ var Debug = (function () {
 }());
 var Drop = (function () {
     function Drop(max, ins) {
-        this.type = "drop";
+        this.type = 'drop';
         this.ins = ins;
         this.out = NO;
         this.max = max;
@@ -2981,7 +3648,7 @@ var EndWhenListener = (function () {
 }());
 var EndWhen = (function () {
     function EndWhen(o, ins) {
-        this.type = "endWhen";
+        this.type = 'endWhen';
         this.ins = ins;
         this.out = NO;
         this.o = o;
@@ -3023,7 +3690,7 @@ var EndWhen = (function () {
 }());
 var Filter = (function () {
     function Filter(passes, ins) {
-        this.type = "filter";
+        this.type = 'filter';
         this.ins = ins;
         this.out = NO;
         this.f = passes;
@@ -3078,7 +3745,7 @@ var FlattenListener = (function () {
 }());
 var Flatten = (function () {
     function Flatten(ins) {
-        this.type = "flatten";
+        this.type = 'flatten';
         this.ins = ins;
         this.out = NO;
         this.open = true;
@@ -3132,7 +3799,7 @@ var Flatten = (function () {
 var Fold = (function () {
     function Fold(f, seed, ins) {
         var _this = this;
-        this.type = "fold";
+        this.type = 'fold';
         this.ins = ins;
         this.out = NO;
         this.f = function (t) { return f(_this.acc, t); };
@@ -3174,7 +3841,7 @@ var Fold = (function () {
 }());
 var Last = (function () {
     function Last(ins) {
-        this.type = "last";
+        this.type = 'last';
         this.ins = ins;
         this.out = NO;
         this.has = false;
@@ -3209,7 +3876,7 @@ var Last = (function () {
             u._c();
         }
         else {
-            u._e("TODO show proper error");
+            u._e('TODO show proper error');
         }
     };
     return Last;
@@ -3290,7 +3957,7 @@ var MapFlatten = (function () {
 }());
 var MapOp = (function () {
     function MapOp(project, ins) {
-        this.type = "map";
+        this.type = 'map';
         this.ins = ins;
         this.out = NO;
         this.f = project;
@@ -3330,7 +3997,7 @@ var FilterMapFusion = (function (_super) {
     __extends(FilterMapFusion, _super);
     function FilterMapFusion(passes, project, ins) {
         var _this = _super.call(this, project, ins) || this;
-        _this.type = "filter+map";
+        _this.type = 'filter+map';
         _this.passes = passes;
         return _this;
     }
@@ -3349,7 +4016,7 @@ var FilterMapFusion = (function (_super) {
 }(MapOp));
 var Remember = (function () {
     function Remember(ins) {
-        this.type = "remember";
+        this.type = 'remember';
         this.ins = ins;
         this.out = NO;
     }
@@ -3365,7 +4032,7 @@ var Remember = (function () {
 }());
 var ReplaceError = (function () {
     function ReplaceError(replacer, ins) {
-        this.type = "replaceError";
+        this.type = 'replaceError';
         this.ins = ins;
         this.out = NO;
         this.f = replacer;
@@ -3406,7 +4073,7 @@ var ReplaceError = (function () {
 }());
 var Sample = (function () {
     function Sample(signal, ins) {
-        this.type = "sample";
+        this.type = 'sample';
         this.ins = ins;
         this.out = NO;
         this.sig = signal;
@@ -3440,7 +4107,7 @@ var Sample = (function () {
             u._c();
         }
         else {
-            u._n(r.value);
+            u._n([t, r.value]);
         }
     };
     Sample.prototype._e = function (err) {
@@ -3461,7 +4128,7 @@ var Sample = (function () {
 }());
 var StartWith = (function () {
     function StartWith(ins, val) {
-        this.type = "startWith";
+        this.type = 'startWith';
         this.ins = ins;
         this.out = NO;
         this.val = val;
@@ -3479,7 +4146,7 @@ var StartWith = (function () {
 }());
 var Take = (function () {
     function Take(max, ins) {
-        this.type = "take";
+        this.type = 'take';
         this.ins = ins;
         this.out = NO;
         this.max = max;
@@ -3721,9 +4388,9 @@ var Stream = (function () {
      */
     Stream.create = function (producer) {
         if (producer) {
-            if (typeof producer.start !== "function" ||
-                typeof producer.stop !== "function") {
-                throw new Error("producer requires both start and stop functions");
+            if (typeof producer.start !== 'function' ||
+                typeof producer.stop !== 'function') {
+                throw new Error('producer requires both start and stop functions');
             }
             internalizeProducer(producer); // mutates the input
         }
@@ -3813,10 +4480,10 @@ var Stream = (function () {
      * @return {Stream}
      */
     Stream.from = function (input) {
-        if (typeof input[symbol_observable_1.default] === "function") {
+        if (typeof input[symbol_observable_1.default] === 'function') {
             return Stream.fromObservable(input);
         }
-        else if (typeof input.then === "function") {
+        else if (typeof input.then === 'function') {
             return Stream.fromPromise(input);
         }
         else if (Array.isArray(input)) {
@@ -3961,7 +4628,7 @@ var Stream = (function () {
     Stream.prototype.mapTo = function (projectedValue) {
         var s = this.map(function () { return projectedValue; });
         var op = s._prod;
-        op.type = op.type.replace("map", "mapTo");
+        op.type = op.type.replace('map', 'mapTo');
         return s;
     };
     /**
@@ -4330,9 +4997,9 @@ var Stream = (function () {
      */
     Stream.prototype.imitate = function (target) {
         if (target instanceof MemoryStream) {
-            throw new Error("A MemoryStream was given to imitate(), but it only " +
-                "supports a Stream. Read more about this restriction here: " +
-                "https://github.com/staltz/xstream#faq");
+            throw new Error('A MemoryStream was given to imitate(), but it only ' +
+                'supports a Stream. Read more about this restriction here: ' +
+                'https://github.com/staltz/xstream#faq');
         }
         this._target = target;
         for (var ils = this._ils, N = ils.length, i = 0; i < N; i++) {
@@ -4560,7 +5227,7 @@ exports.MemoryStream = MemoryStream;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Stream;
 
-},{"symbol-observable":34}],38:[function(require,module,exports){
+},{"symbol-observable":40}],45:[function(require,module,exports){
 "use strict";
 var Signal = (function () {
     function Signal(iterable) {
@@ -4599,10 +5266,10 @@ var Signal = (function () {
         var ins = this;
         return Signal.create((_a = {},
             _a[Symbol.iterator] = function () {
-                var tIter = ins.init();
+                var inIter = ins.init();
                 return {
                     next: function () {
-                        var t = tIter.next();
+                        var t = inIter.next();
                         if (t.done) {
                             return { done: true, value: undefined };
                         }
@@ -4619,7 +5286,7 @@ var Signal = (function () {
         var ins = this;
         return Signal.create((_a = {},
             _a[Symbol.iterator] = function () {
-                var tIter = ins.init();
+                var inIter = ins.init();
                 var sentSeed = false;
                 var acc = seed;
                 return {
@@ -4628,7 +5295,7 @@ var Signal = (function () {
                             sentSeed = true;
                             return { done: false, value: seed };
                         }
-                        var t = tIter.next();
+                        var t = inIter.next();
                         if (t.done) {
                             return { done: true, value: undefined };
                         }
@@ -4647,7 +5314,7 @@ var Signal = (function () {
         var ins = this;
         return Signal.create((_a = {},
             _a[Symbol.iterator] = function () {
-                var tIter = ins.init();
+                var inIter = ins.init();
                 var sentSeed = false;
                 return {
                     next: function () {
@@ -4655,7 +5322,7 @@ var Signal = (function () {
                             sentSeed = true;
                             return { done: false, value: seed };
                         }
-                        return tIter.next();
+                        return inIter.next();
                     }
                 };
             },
@@ -4665,22 +5332,46 @@ var Signal = (function () {
     Signal.prototype.compose = function (operator) {
         return operator(this);
     };
+    Signal.prototype.filter = function (predicate, max) {
+        if (max === void 0) { max = 1000; }
+        var ins = this;
+        return Signal.create((_a = {},
+            _a[Symbol.iterator] = function () {
+                var inIter = ins.init();
+                return {
+                    next: function () {
+                        for (var i = 0; i < max; i++) {
+                            var t = inIter.next();
+                            if (t.done) {
+                                return t;
+                            }
+                            if (predicate(t.value)) {
+                                return t;
+                            }
+                        }
+                        return { done: true, value: undefined };
+                    }
+                };
+            },
+            _a));
+        var _a;
+    };
     Signal.prototype.drop = function (amount) {
         var ins = this;
         return Signal.create((_a = {},
             _a[Symbol.iterator] = function () {
-                var tIter = ins.init();
+                var inIter = ins.init();
                 var dropped = 0;
                 return {
                     next: function () {
                         while (dropped < amount) {
-                            var t = tIter.next();
+                            var t = inIter.next();
                             dropped += 1;
                             if (t.done) {
                                 return t;
                             }
                         }
-                        return tIter.next();
+                        return inIter.next();
                     }
                 };
             },
