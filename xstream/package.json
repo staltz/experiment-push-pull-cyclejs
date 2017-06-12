@@ -20,7 +20,7 @@
     "readme": "npm run page-content && cat markdown/readme-title.md .ignore/content.md > README.md",
     "postreadme": "npm run extra-docs",
     "predist": "rm -rf dist/ && mkdirp dist/ && npm run compile",
-    "dist": "browserify index.js --standalone xstream | node tools/strip-comments.js > dist/xstream.js",
+    "dist": "browserify index.js --standalone xstream > dist/xstream.js",
     "postdist": "node tools/minify.js",
     "start": "npm install && npm prune",
     "check-release": "node tools/check-release.js",

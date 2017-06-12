@@ -1,42 +1,54 @@
 import { VNode } from './VNode';
 import {Signal} from 'ysignal';
-export function constructDOM(parent: Element, root : VNode | Signal<string>) : [VNode | undefined, any[]] { //TODO: Better textNode handling
-    if(typeof root === 'function') {
-        let textNode = document.createTextNode(root.next());
+
+export function constructDOM(parent: Element, root : VNode | Signal<string>) : any[] { //TODO: Return VNode
+    if(typeof root.init === 'function') {
+        const signal = root.init();
+        let prev = signal.next().value;
+        let textNode = document.createTextNode(prev);
         parent.appendChild(textNode);
-        const setter = () => { textNode.nodeValue = root.next(); };
+        const setter = () => {
+            const next = signal.next().value;
+            if(next !== prev) {
+                textNode.nodeValue = signal.next().value;
+                prev = next;
+            }
+        };
         return [undefined, [setter]];
     }
     let element = document.createElement(root.tagName);
 
     const attributeSetters = handleAttributes(element, root.data.attrs);
-    const childrenResult = root.children.map(constructDOM.bind(null, element));
-    const childrenSetters = (childrenResult[1] as any[][]).reduce((a,b) => a.concat(b), []);
+    const childrenResult = root.children.map(e => constructDOM(element, e))
+    console.log(childrenResult);
+    const childrenSetters = (childrenResult as any).reduce((a,b) => a.concat(b), []);
 
     parent.appendChild(element);
 
-    return [
-        {
-            tagName: root.tagName,
-            data: { ...root.data, elm: element },
-            children: childrenResult[0]
-        },
-        attributeSetters.concat(childrenSetters)
-    ];
+    return attributeSetters.concat(childrenSetters);
 }
 
 function handleAttributes(element: Element, attrs: any): any[] {
-    let setters = [];
+    let setters : any[] = [];
+    if(attrs) {
     Object.keys(attrs).forEach(key => {
         const value = attrs[key];
         if(typeof value !== 'function') {
             element.setAttribute(key, value);
         } else {
-            const setter = () => element.setAttribute(key, value.next());
-            setter();
+            value.init();
+            let prev : any = undefined;
+            const setter = () => {
+                const next = value.next().value;
+                if(next !== prev) {
+                    element.setAttribute(key, next);
+                    prev = next;
+                }
+            };
             setters.push(setter);
         }
     });
+    }
 
     return setters;
 }

@@ -1,5 +1,4 @@
 import {Stream, Listener} from 'xstream';
-import dropRepeats from 'xstream/extra/dropRepeats';
 import {Signal} from 'ysignal';
 import {DevToolEnabledSource} from '@cycle/run';
 import {adapt} from '@cycle/run/lib/adapt';
@@ -213,7 +212,6 @@ export class MainDOMSource implements DOMSource {
       .flatten()
       .sample(rootElementS)
       .map(([_, element]) => element)
-      .compose(dropRepeats())
       .map(function setupEventDelegatorOnTopElement(rootElement) {
         // Event listener just for the root element
         if (!namespace || namespace.length === 0) {

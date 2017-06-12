@@ -1,44 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
-
-var xstream_1 = require("xstream");
-var ysignal_1 = require("ysignal");
-var run_1 = require("@cycle/run");
-var cycle_onionify_1 = require("cycle-onionify");
-var dom_1 = require("@cycle/dom");
-function main(sources) {
-    var click$ = sources.DOM.select('.foo').events('click').mapTo(null);
-    var incrementReducer$ = click$.mapTo(function incrementReducer(prevState) {
-        return {
-            count: prevState.count + 1
-        };
-    });
-    var initialReducer$ = xstream_1.Stream.of(function initialReducer() {
-        return { count: 0 };
-    });
-    var reducer$ = xstream_1.Stream.merge(initialReducer$, incrementReducer$);
-    var vdomS = ysignal_1.Signal.combine(sources.state.stateS, sources.windowHeight).map(function (_a) {
-        var state = _a[0],
-            height = _a[1];
-        return dom_1.div('.container', [dom_1.div('.height', 'Height: ' + height), dom_1.button('.foo', 'Count: ' + state.count), dom_1.div('.not', 'Not this')]);
-    });
-    return {
-        DOM: vdomS,
-        state: reducer$
-    };
-}
-run_1.run(cycle_onionify_1.default(main, 'state'), {
-    windowHeight: function () {
-        return ysignal_1.Signal.from(function () {
-            return window.outerHeight;
-        });
-    },
-    DOM: dom_1.makeDOMDriver('#main-container')
-});
-
-
-},{"@cycle/dom":13,"@cycle/run":20,"cycle-onionify":23,"xstream":44,"ysignal":45}],2:[function(require,module,exports){
-"use strict";
 var ysignal_1 = require("ysignal");
 var adapt_1 = require("@cycle/run/lib/adapt");
 var fromEvent_1 = require("./fromEvent");
@@ -66,7 +27,58 @@ var BodyDOMSource = (function () {
 }());
 exports.BodyDOMSource = BodyDOMSource;
 
-},{"./fromEvent":10,"@cycle/run/lib/adapt":19,"ysignal":45}],3:[function(require,module,exports){
+},{"./fromEvent":10,"@cycle/run/lib/adapt":18,"ysignal":30}],2:[function(require,module,exports){
+"use strict";
+function constructDOM(parent, root) {
+    if (typeof root.init === 'function') {
+        var signal_1 = root.init();
+        var prev_1 = signal_1.next().value;
+        var textNode_1 = document.createTextNode(prev_1);
+        parent.appendChild(textNode_1);
+        var setter = function () {
+            var next = signal_1.next().value;
+            if (next !== prev_1) {
+                textNode_1.nodeValue = signal_1.next().value;
+                prev_1 = next;
+            }
+        };
+        return [undefined, [setter]];
+    }
+    var element = document.createElement(root.tagName);
+    var attributeSetters = handleAttributes(element, root.data.attrs);
+    var childrenResult = root.children.map(function (e) { return constructDOM(element, e); });
+    console.log(childrenResult);
+    var childrenSetters = childrenResult.reduce(function (a, b) { return a.concat(b); }, []);
+    parent.appendChild(element);
+    return attributeSetters.concat(childrenSetters);
+}
+exports.constructDOM = constructDOM;
+function handleAttributes(element, attrs) {
+    var setters = [];
+    if (attrs) {
+        Object.keys(attrs).forEach(function (key) {
+            var value = attrs[key];
+            if (typeof value !== 'function') {
+                element.setAttribute(key, value);
+            }
+            else {
+                value.init();
+                var prev_2 = undefined;
+                var setter = function () {
+                    var next = value.next().value;
+                    if (next !== prev_2) {
+                        element.setAttribute(key, next);
+                        prev_2 = next;
+                    }
+                };
+                setters.push(setter);
+            }
+        });
+    }
+    return setters;
+}
+
+},{}],3:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -95,7 +107,7 @@ var DocumentDOMSource = (function () {
 }());
 exports.DocumentDOMSource = DocumentDOMSource;
 
-},{"./fromEvent":10,"@cycle/run/lib/adapt":19,"xstream":44}],4:[function(require,module,exports){
+},{"./fromEvent":10,"@cycle/run/lib/adapt":18,"xstream":29}],4:[function(require,module,exports){
 "use strict";
 var ScopeChecker_1 = require("./ScopeChecker");
 var utils_1 = require("./utils");
@@ -128,7 +140,7 @@ var ElementFinder = (function () {
 }());
 exports.ElementFinder = ElementFinder;
 
-},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":18}],5:[function(require,module,exports){
+},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":17}],5:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var ScopeChecker_1 = require("./ScopeChecker");
@@ -307,7 +319,7 @@ var EventDelegator = (function () {
 }());
 exports.EventDelegator = EventDelegator;
 
-},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":18,"xstream":44}],6:[function(require,module,exports){
+},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":17,"xstream":29}],6:[function(require,module,exports){
 "use strict";
 // const MapPolyfill: typeof Map = require('es6-map');
 var IsolateModule = (function () {
@@ -422,7 +434,6 @@ exports.IsolateModule = IsolateModule;
 },{}],7:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
-var dropRepeats_1 = require("xstream/extra/dropRepeats");
 var adapt_1 = require("@cycle/run/lib/adapt");
 var DocumentDOMSource_1 = require("./DocumentDOMSource");
 var BodyDOMSource_1 = require("./BodyDOMSource");
@@ -600,7 +611,6 @@ var MainDOMSource = (function () {
             var _ = _a[0], element = _a[1];
             return element;
         })
-            .compose(dropRepeats_1.default())
             .map(function setupEventDelegatorOnTopElement(rootElement) {
             // Event listener just for the root element
             if (!namespace || namespace.length === 0) {
@@ -637,7 +647,7 @@ var MainDOMSource = (function () {
 }());
 exports.MainDOMSource = MainDOMSource;
 
-},{"./BodyDOMSource":2,"./DocumentDOMSource":3,"./ElementFinder":4,"./EventDelegator":5,"./fromEvent":10,"./isolate":14,"./utils":18,"@cycle/run/lib/adapt":19,"xstream":44,"xstream/extra/dropRepeats":43}],8:[function(require,module,exports){
+},{"./BodyDOMSource":1,"./DocumentDOMSource":3,"./ElementFinder":4,"./EventDelegator":5,"./fromEvent":10,"./isolate":14,"./utils":17,"@cycle/run/lib/adapt":18,"xstream":29}],8:[function(require,module,exports){
 "use strict";
 var ScopeChecker = (function () {
     function ScopeChecker(fullScope, isolateModule) {
@@ -703,7 +713,7 @@ var VNodeWrapper = (function () {
 }());
 exports.VNodeWrapper = VNodeWrapper;
 
-},{"./hyperscript":12,"snabbdom-selector/lib/commonjs/classNameFromVNode":27,"snabbdom-selector/lib/commonjs/selectorParser":28}],10:[function(require,module,exports){
+},{"./hyperscript":12,"snabbdom-selector/lib/commonjs/classNameFromVNode":20,"snabbdom-selector/lib/commonjs/selectorParser":21}],10:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 function fromEvent(element, eventName, useCapture, preventDefault) {
@@ -733,7 +743,7 @@ function fromEvent(element, eventName, useCapture, preventDefault) {
 }
 exports.fromEvent = fromEvent;
 
-},{"xstream":44}],11:[function(require,module,exports){
+},{"xstream":29}],11:[function(require,module,exports){
 "use strict";
 var hyperscript_1 = require("./hyperscript");
 function isValidString(param) {
@@ -1024,7 +1034,7 @@ function h(sel, b, c) {
 }
 exports.h = h;
 
-},{"snabbdom/is":31,"snabbdom/vnode":39}],13:[function(require,module,exports){
+},{"snabbdom/is":23,"snabbdom/vnode":25}],13:[function(require,module,exports){
 "use strict";
 var thunk_1 = require("snabbdom/thunk");
 exports.thunk = thunk_1.thunk;
@@ -1072,8 +1082,9 @@ exports.MainDOMSource = MainDOMSource_1.MainDOMSource;
  * VNode as input, and outputs the DOMSource object.
  * @function makeDOMDriver
  */
-var makeDOMDriver_1 = require("./makeDOMDriver");
-exports.makeDOMDriver = makeDOMDriver_1.makeDOMDriver;
+//export {makeDOMDriver, DOMDriverOptions} from './makeDOMDriver';
+var makeDOMDriver2_1 = require("./makeDOMDriver2");
+exports.makeDOMDriver2 = makeDOMDriver2_1.makeDOMDriver2;
 /**
  * The hyperscript function `h()` is a function to create virtual DOM objects,
  * also known as VNodes. Call
@@ -1219,7 +1230,7 @@ exports.u = hyperscript_helpers_1.default.u;
 exports.ul = hyperscript_helpers_1.default.ul;
 exports.video = hyperscript_helpers_1.default.video;
 
-},{"./MainDOMSource":7,"./hyperscript":12,"./hyperscript-helpers":11,"./makeDOMDriver":15,"snabbdom/thunk":38}],14:[function(require,module,exports){
+},{"./MainDOMSource":7,"./hyperscript":12,"./hyperscript-helpers":11,"./makeDOMDriver2":15,"snabbdom/thunk":24}],14:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("snabbdom/vnode");
 var utils_1 = require("./utils");
@@ -1277,28 +1288,20 @@ function totalIsolateSink(sink, fullScope) {
 }
 exports.totalIsolateSink = totalIsolateSink;
 
-},{"./utils":18,"snabbdom/vnode":39}],15:[function(require,module,exports){
+},{"./utils":17,"snabbdom/vnode":25}],15:[function(require,module,exports){
 "use strict";
-var snabbdom_1 = require("snabbdom");
-var ysignal_1 = require("ysignal");
-var MainDOMSource_1 = require("./MainDOMSource");
+var DOMBuilder_1 = require("./DOMBuilder");
 var VNodeWrapper_1 = require("./VNodeWrapper");
 var IsolateModule_1 = require("./IsolateModule");
 var utils_1 = require("./utils");
-var modules_1 = require("./modules");
-function makeDOMDriverInputGuard(modules) {
-    if (!Array.isArray(modules)) {
-        throw new Error("Optional modules option must be " + "an array for snabbdom modules");
-    }
-}
-function domDriverInputGuard(viewS) {
-    if (!viewS || typeof viewS.init !== "function") {
-        throw new Error("The DOM driver function expects as input a Signal of " +
+function domDriverInputGuard(view) {
+    if (!view || typeof view !== "object") {
+        throw new Error("The DOM driver function expects as input a tree of " +
             "virtual DOM elements");
     }
 }
 function unwrapElementFromVNode(vnode) {
-    return vnode.elm;
+    return vnode.data.elm;
 }
 function reportSnabbdomError(err) {
     (console.error || console.log)(err);
@@ -1320,55 +1323,43 @@ var MimicIterator = (function () {
     };
     return MimicIterator;
 }());
-function makeDOMDriver(container, options) {
-    if (!options) {
-        options = {};
-    }
-    var modules = options.modules || modules_1.default;
+function makeDOMDriver2(container) {
     var isolateModule = new IsolateModule_1.IsolateModule();
-    var patch = snabbdom_1.init([isolateModule.createModule()].concat(modules));
     var rootElement = utils_1.getElement(container) || document.body;
+    var rootElementS = undefined;
     var vnodeWrapper = new VNodeWrapper_1.VNodeWrapper(rootElement);
     var delegators = new Map();
-    makeDOMDriverInputGuard(modules);
-    function DOMDriver(vnodeProxy, name) {
+    function DOMDriver(vnode, name) {
         if (name === void 0) { name = 'DOM'; }
-        var vnodeS = ysignal_1.Signal.create(vnodeProxy);
-        domDriverInputGuard(vnodeS);
-        var rootElementS = vnodeS
-            .map(function (vnode) { return vnodeWrapper.call(vnode); })
-            .fold(patch, rootElement)
-            .drop(1)
-            .map(unwrapElementFromVNode)
-            .startWith(rootElement);
-        var iter = new MimicIterator();
-        // Start the snabbdom patching, over time
-        var listener = { error: reportSnabbdomError };
+        console.log(vnode);
         if (document.readyState === 'loading') {
             document.addEventListener('readystatechange', function () {
                 if (document.readyState === 'interactive') {
-                    iter.imitate(rootElementS.init());
+                    console.log('ready: ', vnode);
+                    var _a = DOMBuilder_1.constructDOM(rootElement, vnode), node = _a[0], setters_1 = _a[1];
+                    console.log('setters', setters_1);
                     requestAnimationFrame(function again1() {
-                        iter.next();
+                        setters_1.forEach(function (fn) { fn(); });
                         requestAnimationFrame(again1);
                     });
                 }
             });
         }
         else {
-            iter.imitate(rootElementS.init());
+            console.log(vnode);
+            var _a = DOMBuilder_1.constructDOM(rootElement, vnode), node = _a[0], setters_2 = _a[1];
             requestAnimationFrame(function again2() {
-                iter.next();
+                setters_2.forEach(function (fn) { fn(); });
                 requestAnimationFrame(again2);
             });
         }
-        return new MainDOMSource_1.MainDOMSource(rootElementS, iter, [], isolateModule, delegators, name);
+        return undefined;
     }
     return DOMDriver;
 }
-exports.makeDOMDriver = makeDOMDriver;
+exports.makeDOMDriver2 = makeDOMDriver2;
 
-},{"./IsolateModule":6,"./MainDOMSource":7,"./VNodeWrapper":9,"./modules":17,"./utils":18,"snabbdom":37,"ysignal":45}],16:[function(require,module,exports){
+},{"./DOMBuilder":2,"./IsolateModule":6,"./VNodeWrapper":9,"./utils":17}],16:[function(require,module,exports){
 "use strict";
 function createMatchesSelector() {
     var vendor;
@@ -1401,28 +1392,6 @@ function createMatchesSelector() {
 exports.matchesSelector = createMatchesSelector();
 
 },{}],17:[function(require,module,exports){
-"use strict";
-var class_1 = require("snabbdom/modules/class");
-exports.ClassModule = class_1.default;
-var props_1 = require("snabbdom/modules/props");
-exports.PropsModule = props_1.default;
-var attributes_1 = require("snabbdom/modules/attributes");
-exports.AttrsModule = attributes_1.default;
-var style_1 = require("snabbdom/modules/style");
-exports.StyleModule = style_1.default;
-var dataset_1 = require("snabbdom/modules/dataset");
-exports.DatasetModule = dataset_1.default;
-var modules = [
-    style_1.default,
-    class_1.default,
-    props_1.default,
-    attributes_1.default,
-    dataset_1.default,
-];
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = modules;
-
-},{"snabbdom/modules/attributes":32,"snabbdom/modules/class":33,"snabbdom/modules/dataset":34,"snabbdom/modules/props":35,"snabbdom/modules/style":36}],18:[function(require,module,exports){
 "use strict";
 function isElement(obj) {
     return typeof HTMLElement === "object"
@@ -1468,7 +1437,7 @@ function getSelectors(namespace) {
 }
 exports.getSelectors = getSelectors;
 
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 var adaptStream = function (x) { return x; };
 function setAdapt(f) {
@@ -1480,881 +1449,35 @@ function adapt(stream) {
 }
 exports.adapt = adapt;
 
-},{}],20:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var xstream_1 = require("xstream");
-var adapt_1 = require("./adapt");
-var PushPullProxy = (function (_super) {
-    __extends(PushPullProxy, _super);
-    function PushPullProxy() {
-        var _this = _super.call(this, undefined) || this;
-        var proxy = _this;
-        _this.iterator = {
-            next: function () {
-                if (proxy.target) {
-                    return proxy.target.next();
-                }
-                else {
-                    return { done: false, value: undefined };
-                }
-            }
-        };
-        return _this;
-    }
-    PushPullProxy.prototype[Symbol.iterator] = function () {
-        return this.target || this.iterator;
-    };
-    PushPullProxy.prototype.imitateIterator = function (iterator) {
-        this.target = iterator;
-    };
-    return PushPullProxy;
-}(xstream_1.MemoryStream));
-exports.PushPullProxy = PushPullProxy;
-function logToConsoleError(err) {
-    var target = err.stack || err;
-    if (console && console.error) {
-        console.error(target);
-    }
-    else if (console && console.log) {
-        console.log(target);
-    }
-}
-function makeSinkProxies(drivers) {
-    var sinkProxies = {};
-    for (var name_1 in drivers) {
-        if (drivers.hasOwnProperty(name_1)) {
-            sinkProxies[name_1] = new PushPullProxy();
-        }
-    }
-    return sinkProxies;
-}
-function callDrivers(drivers, sinkProxies) {
-    var sources = {};
-    for (var name_2 in drivers) {
-        if (drivers.hasOwnProperty(name_2)) {
-            sources[name_2] = drivers[name_2](sinkProxies[name_2], name_2);
-            if (sources[name_2] && typeof sources[name_2] === 'object') {
-                sources[name_2]._isCycleSource = name_2;
-            }
-        }
-    }
-    return sources;
-}
-// NOTE: this will mutate `sources`.
-function adaptSources(sources) {
-    for (var name_3 in sources) {
-        if (sources.hasOwnProperty(name_3) &&
-            sources[name_3] &&
-            typeof sources[name_3]['shamefullySendNext'] === 'function') {
-            sources[name_3] = adapt_1.adapt(sources[name_3]);
-        }
-    }
-    return sources;
-}
-function replicateMany(sinks, sinkProxies) {
-    var sinkNames = Object.keys(sinks).filter(function (name) { return !!sinkProxies[name]; });
-    var buffers = {};
-    var replicators = {};
-    sinkNames.forEach(function (name) {
-        buffers[name] = { _n: [], _e: [] };
-        replicators[name] = {
-            next: function (x) { return buffers[name]._n.push(x); },
-            error: function (err) { return buffers[name]._e.push(err); },
-            complete: function () { }
-        };
-    });
-    var streamSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]['subscribe'] === 'function'; });
-    var signalSinkNames = sinkNames.filter(function (name) { return sinks[name] && typeof sinks[name]['init'] === 'function'; });
-    var subscriptions = streamSinkNames.map(function (name) {
-        return xstream_1.default.fromObservable(sinks[name]).subscribe(replicators[name]);
-    });
-    signalSinkNames.map(function (name) {
-        return sinkProxies[name].imitateIterator(sinks[name][Symbol.iterator]());
-    });
-    streamSinkNames.forEach(function (name) {
-        var listener = sinkProxies[name];
-        var next = function (x) {
-            listener._n(x);
-        };
-        var error = function (err) {
-            logToConsoleError(err);
-            listener._e(err);
-        };
-        buffers[name]._n.forEach(next);
-        buffers[name]._e.forEach(error);
-        replicators[name].next = next;
-        replicators[name].error = error;
-        // because sink.subscribe(replicator) had mutated replicator to add
-        // _n, _e, _c, we must also update these:
-        replicators[name]._n = next;
-        replicators[name]._e = error;
-    });
-    buffers = null; // free up for GC
-    return function disposeReplication() {
-        subscriptions.forEach(function (s) { return s.unsubscribe(); });
-        streamSinkNames.forEach(function (name) { return sinkProxies[name]._c(); });
-        signalSinkNames.forEach(function (name) {
-            var iter = sinkProxies[name][Symbol.iterator]();
-            iter.return();
-        });
-    };
-}
-function disposeSources(sources) {
-    for (var k in sources) {
-        if (sources.hasOwnProperty(k) &&
-            sources[k] &&
-            sources[k].dispose) {
-            sources[k].dispose();
-        }
-    }
-}
-function isObjectEmpty(obj) {
-    return Object.keys(obj).length === 0;
-}
-/**
- * A function that prepares the Cycle application to be executed. Takes a `main`
- * function and prepares to circularly connects it to the given collection of
- * driver functions. As an output, `setup()` returns an object with three
- * properties: `sources`, `sinks` and `run`. Only when `run()` is called will
- * the application actually execute. Refer to the documentation of `run()` for
- * more details.
- *
- * **Example:**
- * ```js
- * import {setup} from '@cycle/run';
- * const {sources, sinks, run} = setup(main, drivers);
- * // ...
- * const dispose = run(); // Executes the application
- * // ...
- * dispose();
- * ```
- *
- * @param {Function} main a function that takes `sources` as input and outputs
- * `sinks`.
- * @param {Object} drivers an object where keys are driver names and values
- * are driver functions.
- * @return {Object} an object with three properties: `sources`, `sinks` and
- * `run`. `sources` is the collection of driver sources, `sinks` is the
- * collection of driver sinks, these can be used for debugging or testing. `run`
- * is the function that once called will execute the application.
- * @function setup
- */
-function setup(main, drivers) {
-    if (typeof main !== "function") {
-        throw new Error("First argument given to Cycle must be the 'main' " + "function.");
-    }
-    if (typeof drivers !== "object" || drivers === null) {
-        throw new Error("Second argument given to Cycle must be an object " +
-            "with driver functions as properties.");
-    }
-    if (isObjectEmpty(drivers)) {
-        throw new Error("Second argument given to Cycle must be an object " +
-            "with at least one driver function declared as a property.");
-    }
-    var sinkProxies = makeSinkProxies(drivers);
-    var sources = callDrivers(drivers, sinkProxies);
-    var adaptedSources = adaptSources(sources);
-    var sinks = main(adaptedSources);
-    if (typeof window !== 'undefined') {
-        window.Cyclejs = window.Cyclejs || {};
-        window.Cyclejs.sinks = sinks;
-    }
-    function run() {
-        var disposeReplication = replicateMany(sinks, sinkProxies);
-        return function dispose() {
-            disposeSources(sources);
-            disposeReplication();
-        };
-    }
-    return { sinks: sinks, sources: sources, run: run };
-}
-exports.setup = setup;
-/**
- * Takes a `main` function and circularly connects it to the given collection
- * of driver functions.
- *
- * **Example:**
- * ```js
- * import run from '@cycle/run';
- * const dispose = run(main, drivers);
- * // ...
- * dispose();
- * ```
- *
- * The `main` function expects a collection of "source" streams (returned from
- * drivers) as input, and should return a collection of "sink" streams (to be
- * given to drivers). A "collection of streams" is a JavaScript object where
- * keys match the driver names registered by the `drivers` object, and values
- * are the streams. Refer to the documentation of each driver to see more
- * details on what types of sources it outputs and sinks it receives.
- *
- * @param {Function} main a function that takes `sources` as input and outputs
- * `sinks`.
- * @param {Object} drivers an object where keys are driver names and values
- * are driver functions.
- * @return {Function} a dispose function, used to terminate the execution of the
- * Cycle.js program, cleaning up resources used.
- * @function run
- */
-function run(main, drivers) {
-    // TODO this any below was added here with ysignal changes
-    var _a = setup(main, drivers), run = _a.run, sinks = _a.sinks;
-    if (typeof window !== 'undefined' &&
-        window['CyclejsDevTool_startGraphSerializer']) {
-        window['CyclejsDevTool_startGraphSerializer'](sinks);
-    }
-    return run();
-}
-exports.run = run;
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = run;
 
-},{"./adapt":19,"xstream":44}],21:[function(require,module,exports){
-"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var adapt_1 = require("@cycle/run/lib/adapt");
-var pickMerge_1 = require("./pickMerge");
-var pickCombine_1 = require("./pickCombine");
-var CollectionSource = (function () {
-    function CollectionSource(_ins$) {
-        this._ins$ = _ins$;
-    }
-    /**
-     * Like `merge` in xstream, this operator blends multiple streams together, but
-     * picks those streams from a collection of component instances.
-     *
-     * Use the `selector` string to pick a stream from the sinks object of each
-     * component instance, then pickMerge will merge all those picked streams.
-     *
-     * @param {String} selector a name of a channel in a sinks object belonging to
-     * each component in the collection of components.
-     * @return {Function} an operator to be used with xstream's `compose` method.
-     */
-    CollectionSource.prototype.pickMerge = function (selector) {
-        return adapt_1.adapt(this._ins$.compose(pickMerge_1.pickMerge(selector)));
-    };
-    /**
-     * Like `combine` in xstream, this operator combines multiple streams together,
-     * but picks those streams from a collection of component instances.
-     *
-     * Use the `selector` string to pick a stream from the sinks object of each
-     * component instance, then pickCombine will combine all those picked streams.
-     *
-     * @param {String} selector a name of a channel in a sinks object belonging to
-     * each component in the collection of components.
-     * @return {Function} an operator to be used with xstream's `compose` method.
-     */
-    CollectionSource.prototype.pickCombine = function (selector) {
-        return adapt_1.adapt(this._ins$.compose(pickCombine_1.pickCombine(selector)));
-    };
-    return CollectionSource;
-}());
-exports.CollectionSource = CollectionSource;
-
-},{"./pickCombine":25,"./pickMerge":26,"@cycle/run/lib/adapt":19}],22:[function(require,module,exports){
-"use strict";
-var __assign = (this && this.__assign) || Object.assign || function(t) {
-    for (var s, i = 1, n = arguments.length; i < n; i++) {
-        s = arguments[i];
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-            t[p] = s[p];
-    }
-    return t;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-function updateArrayEntry(array, scope, newVal) {
-    if (newVal === array[scope]) {
-        return array;
-    }
-    var index = parseInt(scope);
-    if (typeof newVal === 'undefined') {
-        return array.filter(function (val, i) { return i !== index; });
-    }
-    return array.map(function (val, i) { return (i === index ? newVal : val); });
-}
-function makeGetter(scope) {
-    if (typeof scope === 'string' || typeof scope === 'number') {
-        return function lensGet(state) {
-            if (typeof state === 'undefined') {
-                return void 0;
-            }
-            else {
-                return state[scope];
-            }
-        };
-    }
-    else {
-        return scope.get;
-    }
-}
-function makeSetter(scope) {
-    if (typeof scope === 'string' || typeof scope === 'number') {
-        return function lensSet(state, childState) {
-            if (Array.isArray(state)) {
-                return updateArrayEntry(state, scope, childState);
-            }
-            else if (typeof state === 'undefined') {
-                return _a = {}, _a[scope] = childState, _a;
-            }
-            else {
-                return __assign({}, state, (_b = {}, _b[scope] = childState, _b));
-            }
-            var _a, _b;
-        };
-    }
-    else {
-        return scope.set;
-    }
-}
-function isolateSource(source, scope) {
-    return source.select(scope);
-}
-exports.isolateSource = isolateSource;
-function isolateSink(innerReducer$, scope) {
-    var get = makeGetter(scope);
-    var set = makeSetter(scope);
-    return innerReducer$.map(function (innerReducer) {
-        return function outerReducer(outer) {
-            var prevInner = get(outer);
-            var nextInner = innerReducer(prevInner);
-            if (prevInner === nextInner) {
-                return outer;
-            }
-            else {
-                return set(outer, nextInner);
-            }
-        };
-    });
-}
-exports.isolateSink = isolateSink;
-function defaultGetKey(statePiece) {
-    return statePiece.key;
-}
-var identityLens = {
-    get: function (outer) { return outer; },
-    set: function (outer, inner) { return inner; },
-};
-function instanceLens(getKey, key) {
-    return {
-        get: function (arr) {
-            if (typeof arr === 'undefined') {
-                return void 0;
-            }
-            else {
-                for (var i = 0, n = arr.length; i < n; ++i) {
-                    if (getKey(arr[i]) === key) {
-                        return arr[i];
-                    }
-                }
-                return void 0;
-            }
-        },
-        set: function (arr, item) {
-            if (typeof arr === 'undefined') {
-                return [item];
-            }
-            else if (typeof item === 'undefined') {
-                return arr.filter(function (s) { return getKey(s) !== key; });
-            }
-            else {
-                return arr.map(function (s) {
-                    if (getKey(s) === key) {
-                        return item;
-                    }
-                    else {
-                        return s;
-                    }
-                });
-            }
-        },
-    };
-}
-var StateSource = (function () {
-    function StateSource(signal, name) {
-        /**
-         * Treats the state in this StateSource as a dynamic collection of many child
-         * components, returning a CollectionSource.
-         *
-         * Typically you use this function when the state$ emits arrays, and each
-         * entry in the array is an object holding the state for each child component.
-         * When the state array grows, the collection will automatically instantiate
-         * a new child component. Similarly, when the state array gets smaller, the
-         * collection will handle removal of the corresponding child component.
-         *
-         * This function returns a CollectionSource, which can be consumed with the
-         * operators `pickCombine` and `pickMerge` attached to it as methods.
-         *
-         * As arguments, you pass the child Cycle.js component function to use for
-         * each entry in the array, and the sources object to give to as input to each
-         * child component. Each entry in the array is expected to be an object with
-         * at least `key` as a property, which should uniquely identify that child. If
-         * these objects have a different unique identifier like `id`, you can tell
-         * that to `asCollection` in the third argument: a function that takes the
-         * child object state, and returns the unique identifier. By default, this
-         * third argument is the function `obj => obj.key`.
-         *
-         * @param {Function} itemComp a function that takes `sources` as input and
-         * returns `sinks`, representing the component to be used for each child in
-         * the collection.
-         * @param {Object} sources the object with sources to pass as input for each
-         * child component.
-         * @param getKey
-         * @return {CollectionSource}
-         */
-        // public asCollection<Si>(
-        //   itemComp: (so: any) => Si,
-        //   sources: any,
-        //   getKey: any = defaultGetKey,
-        // ): CollectionSource<Si> {
-        //   const arrayS = this.stateS;
-        //   const name = this._name;
-        //   const collectionS = arrayS.fold(
-        //     (acc: Instances<Si>, nextState: Array<any> | any) => {
-        //       const dict = acc.dict;
-        //       if (Array.isArray(nextState)) {
-        //         const nextInstArray = Array(nextState.length) as Array<
-        //           Si & {_key: string}
-        //         >;
-        //         const nextKeys = new Set<string>();
-        //         // add
-        //         for (let i = 0, n = nextState.length; i < n; ++i) {
-        //           const key = getKey(nextState[i]);
-        //           nextKeys.add(key);
-        //           if (dict.has(key)) {
-        //             nextInstArray[i] = dict.get(key) as any;
-        //           } else {
-        //             const scopes = {
-        //               '*': '$' + key,
-        //               [name]: instanceLens(getKey, key),
-        //             };
-        //             const sinks = isolate(itemComp, scopes)(sources);
-        //             dict.set(key, sinks);
-        //             nextInstArray[i] = sinks;
-        //           }
-        //           nextInstArray[i]._key = key;
-        //         }
-        //         // remove
-        //         dict.forEach((_, key) => {
-        //           if (!nextKeys.has(key)) {
-        //             dict.delete(key);
-        //           }
-        //         });
-        //         nextKeys.clear();
-        //         return {dict: dict, arr: nextInstArray};
-        //       } else {
-        //         dict.clear();
-        //         const key = getKey(nextState);
-        //         const scopes = {'*': '$' + key, [name]: identityLens};
-        //         const sinks = isolate(itemComp, scopes)(sources);
-        //         dict.set(key, sinks);
-        //         return {dict: dict, arr: [sinks]};
-        //       }
-        //     },
-        //     {dict: new Map(), arr: []} as Instances<Si>,
-        //   );
-        //   return new CollectionSource<Si>(collectionS);
-        // }
-        this.isolateSource = isolateSource;
-        this.isolateSink = isolateSink;
-        this.stateS = signal;
-        // .filter(s => typeof s !== 'undefined');
-        // .compose(dropRepeats())
-        // .remember();
-        this._name = name;
-        this.stateS._isCycleSource = name;
-    }
-    /**
-     * Selects a part (or scope) of the state object and returns a new StateSource
-     * dynamically representing that selected part of the state.
-     *
-     * @param {string|number|lens} scope as a string, this argument represents the
-     * property you want to select from the state object. As a number, this
-     * represents the array index you want to select from the state array. As a
-     * lens object (an object with get() and set()), this argument represents any
-     * custom way of selecting something from the state object.
-     */
-    StateSource.prototype.select = function (scope) {
-        var get = makeGetter(scope);
-        return new StateSource(this.stateS.map(get), this._name);
-    };
-    return StateSource;
-}());
-exports.StateSource = StateSource;
-
-},{}],23:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var onionify_1 = require("./onionify");
-var StateSource_1 = require("./StateSource");
-exports.StateSource = StateSource_1.StateSource;
-exports.isolateSource = StateSource_1.isolateSource;
-exports.isolateSink = StateSource_1.isolateSink;
-var CollectionSource_1 = require("./CollectionSource");
-exports.CollectionSource = CollectionSource_1.CollectionSource;
-/**
- * Like `merge` in xstream, this operator blends multiple streams together, but
- * picks those streams from a stream of instances.
- *
- * The instances data structure has a sinks object for each instance. Use the
- * `selector` string to pick a stream from the sinks object of each instance,
- * then pickMerge will merge all those picked streams.
- *
- * @param {String} selector a name of a channel in a sinks object belonging to
- * each component in the collection of instances.
- * @return {Function} an operator to be used with xstream's `compose` method.
- */
-var pickMerge_1 = require("./pickMerge");
-exports.pickMerge = pickMerge_1.pickMerge;
-/**
- * Like `combine` in xstream, this operator combines multiple streams together,
- * but picks those streams from a stream of instances.
- *
- * The instances data structure has a sinks object for each instance. Use the
- * `selector` string to pick a stream from the sinks object of each instance,
- * then pickCombine will combine all those picked streams.
- *
- * @param {String} selector a name of a channel in a sinks object belonging to
- * each component in the collection of instances.
- * @return {Function} an operator to be used with xstream's `compose` method.
- */
-var pickCombine_1 = require("./pickCombine");
-exports.pickCombine = pickCombine_1.pickCombine;
-/**
- * Given a Cycle.js component that expects an onion state *source* and will
- * output onion reducer *sink*, this function sets up the state management
- * mechanics to accumulate state over time and provide the state source. It
- * returns a Cycle.js component which wraps the component given as input.
- * Essentially, it hooks up the onion sink with the onion source as a cycle.
- *
- * Optionally, you can pass a custom name for the onion channel. By default,
- * the name is 'onion' in sources and sinks, but you can change that to be
- * whatever string you wish.
- *
- * @param {Function} main a function that takes `sources` as input and outputs
- * `sinks`.
- * @param {String} name an optional string for the custom name given to the
- * onion channel. By default, it is 'onion'.
- * @return {Function} a component that wraps the main function given as input,
- * adding state accumulation logic to it.
- */
-exports.default = onionify_1.onionify;
-
-},{"./CollectionSource":21,"./StateSource":22,"./onionify":24,"./pickCombine":25,"./pickMerge":26}],24:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xstream_1 = require("xstream");
 var ysignal_1 = require("ysignal");
-var StateSource_1 = require("./StateSource");
-function fold(seed, reducer$) {
-    return ysignal_1.Signal.create((_a = {},
-        _a[Symbol.iterator] = function () {
-            var acc = seed;
-            var done = false;
-            var subscription = reducer$.subscribe({
-                next: function (reducer) {
-                    var next = reducer(acc);
-                    if (typeof next !== 'undefined') {
-                        acc = next;
-                    }
-                },
-                error: function (e) { },
-                complete: function () {
-                    done = true;
-                },
-            });
-            return {
-                next: function () {
-                    return { done: done, value: done ? undefined : acc };
-                },
-                return: function () {
-                    subscription.unsubscribe();
-                    return { done: true, value: undefined };
-                },
-            };
-        },
-        _a));
-    var _a;
-}
-function onionify(main, name) {
-    if (name === void 0) { name = 'onion'; }
-    return function mainOnionified(sources) {
-        var reducerMimic$ = xstream_1.default.create();
-        var stateS = fold(void 0, reducerMimic$);
-        // .fold((state, reducer) => reducer(state), void 0 as (T | undefined))
-        // .drop(1);
-        sources[name] = new StateSource_1.StateSource(stateS, name);
-        var sinks = main(sources);
-        if (sinks[name]) {
-            reducerMimic$.imitate(xstream_1.default.fromObservable(sinks[name]));
-        }
-        return sinks;
+var dom_1 = require("@cycle/dom");
+function main(sources) {
+    var vdom = {
+        tagName: 'div',
+        data: {},
+        children: [{
+            tagName: 'div',
+            data: {},
+            children: [sources.windowHeight.map(function (h) {
+                return 'Height: ' + h;
+            })]
+        }]
+    };
+    return {
+        DOM: vdom
     };
 }
-exports.onionify = onionify;
+var t = main({ windowHeight: ysignal_1.Signal.from(function () {
+        return window.outerHeight;
+    }) });
+dom_1.makeDOMDriver2('#main-container')(t.DOM);
 
-},{"./StateSource":22,"xstream":44,"ysignal":45}],25:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xstream_1 = require("xstream");
-var PickCombineListener = (function () {
-    function PickCombineListener(key, out, p, ins) {
-        this.key = key;
-        this.out = out;
-        this.p = p;
-        this.val = xstream_1.NO;
-        this.ins = ins;
-    }
-    PickCombineListener.prototype._n = function (t) {
-        var p = this.p, out = this.out;
-        this.val = t;
-        if (out === null) {
-            return;
-        }
-        this.p.up();
-    };
-    PickCombineListener.prototype._e = function (err) {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._e(err);
-    };
-    PickCombineListener.prototype._c = function () {
-    };
-    return PickCombineListener;
-}());
-var PickCombine = (function () {
-    function PickCombine(sel, ins) {
-        this.type = 'combine';
-        this.ins = ins;
-        this.sel = sel;
-        this.out = null;
-        this.ils = new Map();
-        this.inst = null;
-    }
-    PickCombine.prototype._start = function (out) {
-        this.out = out;
-        this.ins._add(this);
-    };
-    PickCombine.prototype._stop = function () {
-        var ils = this.ils;
-        ils.forEach(function (il) {
-            il.ins._remove(il);
-            il.ins = null;
-            il.out = null;
-            il.val = null;
-        });
-        ils.clear();
-        this.out = null;
-        this.ils = new Map();
-        this.inst = null;
-    };
-    PickCombine.prototype.up = function () {
-        var arr = this.inst.arr;
-        var n = arr.length;
-        var ils = this.ils;
-        var outArr = Array(n);
-        for (var i = 0; i < n; ++i) {
-            var sinks = arr[i];
-            var key = sinks._key;
-            if (!ils.has(key)) {
-                return;
-            }
-            var val = ils.get(key).val;
-            if (val === xstream_1.NO) {
-                return;
-            }
-            outArr[i] = val;
-        }
-        this.out._n(outArr);
-    };
-    PickCombine.prototype._n = function (inst) {
-        this.inst = inst;
-        var arrSinks = inst.arr;
-        var ils = this.ils;
-        var out = this.out;
-        var sel = this.sel;
-        var dict = inst.dict;
-        var n = arrSinks.length;
-        // remove
-        var removed = false;
-        ils.forEach(function (il, key) {
-            if (!dict.has(key)) {
-                il.ins._remove(il);
-                il.ins = null;
-                il.out = null;
-                il.val = null;
-                ils.delete(key);
-                removed = true;
-            }
-        });
-        if (n === 0) {
-            out._n([]);
-            return;
-        }
-        // add
-        var added = false;
-        for (var i = 0; i < n; ++i) {
-            var sinks = arrSinks[i];
-            var key = sinks._key;
-            var sink = sinks[sel];
-            if (!ils.has(key)) {
-                ils.set(key, new PickCombineListener(key, out, this, sink));
-                added = true;
-            }
-        }
-        if (added) {
-            for (var i = 0; i < n; ++i) {
-                var sinks = arrSinks[i];
-                var key = sinks._key;
-                var sink = sinks[sel];
-                if (sink._ils.length === 0) {
-                    sink._add(ils.get(key));
-                }
-            }
-        }
-        if (removed) {
-            this.up();
-        }
-    };
-    PickCombine.prototype._e = function (e) {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._e(e);
-    };
-    PickCombine.prototype._c = function () {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._c();
-    };
-    return PickCombine;
-}());
-function pickCombine(selector) {
-    return function pickCombineOperator(inst$) {
-        return new xstream_1.Stream(new PickCombine(selector, inst$));
-    };
-}
-exports.pickCombine = pickCombine;
 
-},{"xstream":44}],26:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xstream_1 = require("xstream");
-var PickMergeListener = (function () {
-    function PickMergeListener(out, p, ins) {
-        this.ins = ins;
-        this.out = out;
-        this.p = p;
-    }
-    PickMergeListener.prototype._n = function (t) {
-        var p = this.p, out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._n(t);
-    };
-    PickMergeListener.prototype._e = function (err) {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._e(err);
-    };
-    PickMergeListener.prototype._c = function () {
-    };
-    return PickMergeListener;
-}());
-var PickMerge = (function () {
-    function PickMerge(sel, ins) {
-        this.type = 'pickMerge';
-        this.ins = ins;
-        this.out = null;
-        this.sel = sel;
-        this.ils = new Map();
-        this.inst = null;
-    }
-    PickMerge.prototype._start = function (out) {
-        this.out = out;
-        this.ins._add(this);
-    };
-    PickMerge.prototype._stop = function () {
-        var ils = this.ils;
-        ils.forEach(function (il, key) {
-            il.ins._remove(il);
-            il.ins = null;
-            il.out = null;
-            ils.delete(key);
-        });
-        ils.clear();
-        this.out = null;
-        this.ils = new Map();
-        this.inst = null;
-    };
-    PickMerge.prototype._n = function (inst) {
-        this.inst = inst;
-        var arrSinks = inst.arr;
-        var ils = this.ils;
-        var out = this.out;
-        var sel = this.sel;
-        var n = arrSinks.length;
-        // add
-        for (var i = 0; i < n; ++i) {
-            var sinks = arrSinks[i];
-            var key = sinks._key;
-            var sink = sinks[sel];
-            if (!ils.has(key)) {
-                ils.set(key, new PickMergeListener(out, this, sink));
-            }
-        }
-        for (var i = 0; i < n; ++i) {
-            var sinks = arrSinks[i];
-            var key = sinks._key;
-            var sink = sinks[sel];
-            if (sink._ils.length === 0) {
-                sink._add(ils.get(key));
-            }
-        }
-        // remove
-        ils.forEach(function (il, key) {
-            if (!inst.dict.has(key) || !inst.dict.get(key)) {
-                il.ins._remove(il);
-                il.ins = null;
-                il.out = null;
-                ils.delete(key);
-            }
-        });
-    };
-    PickMerge.prototype._e = function (err) {
-        var u = this.out;
-        if (u === null)
-            return;
-        u._e(err);
-    };
-    PickMerge.prototype._c = function () {
-        var u = this.out;
-        if (u === null)
-            return;
-        u._c();
-    };
-    return PickMerge;
-}());
-function pickMerge(selector) {
-    return function pickMergeOperator(inst$) {
-        return new xstream_1.Stream(new PickMerge(selector, inst$));
-    };
-}
-exports.pickMerge = pickMerge;
-
-},{"xstream":44}],27:[function(require,module,exports){
+},{"@cycle/dom":13,"ysignal":30}],20:[function(require,module,exports){
 "use strict";
 var selectorParser_1 = require('./selectorParser');
 function classNameFromVNode(vNode) {
@@ -2375,7 +1498,7 @@ function classNameFromVNode(vNode) {
 }
 exports.classNameFromVNode = classNameFromVNode;
 
-},{"./selectorParser":28}],28:[function(require,module,exports){
+},{"./selectorParser":21}],21:[function(require,module,exports){
 "use strict";
 function selectorParser(_a) {
     var sel = _a.sel;
@@ -2396,7 +1519,7 @@ function selectorParser(_a) {
 }
 exports.selectorParser = selectorParser;
 
-},{}],29:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -2456,54 +1579,7 @@ exports.h = h;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = h;
 
-},{"./is":31,"./vnode":39}],30:[function(require,module,exports){
-"use strict";
-function createElement(tagName) {
-    return document.createElement(tagName);
-}
-function createElementNS(namespaceURI, qualifiedName) {
-    return document.createElementNS(namespaceURI, qualifiedName);
-}
-function createTextNode(text) {
-    return document.createTextNode(text);
-}
-function insertBefore(parentNode, newNode, referenceNode) {
-    parentNode.insertBefore(newNode, referenceNode);
-}
-function removeChild(node, child) {
-    node.removeChild(child);
-}
-function appendChild(node, child) {
-    node.appendChild(child);
-}
-function parentNode(node) {
-    return node.parentNode;
-}
-function nextSibling(node) {
-    return node.nextSibling;
-}
-function tagName(elm) {
-    return elm.tagName;
-}
-function setTextContent(node, text) {
-    node.textContent = text;
-}
-exports.htmlDomApi = {
-    createElement: createElement,
-    createElementNS: createElementNS,
-    createTextNode: createTextNode,
-    insertBefore: insertBefore,
-    removeChild: removeChild,
-    appendChild: appendChild,
-    parentNode: parentNode,
-    nextSibling: nextSibling,
-    tagName: tagName,
-    setTextContent: setTextContent,
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.htmlDomApi;
-
-},{}],31:[function(require,module,exports){
+},{"./is":23,"./vnode":25}],23:[function(require,module,exports){
 "use strict";
 exports.array = Array.isArray;
 function primitive(s) {
@@ -2511,510 +1587,7 @@ function primitive(s) {
 }
 exports.primitive = primitive;
 
-},{}],32:[function(require,module,exports){
-"use strict";
-var NamespaceURIs = {
-    "xlink": "http://www.w3.org/1999/xlink"
-};
-var booleanAttrs = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "compact", "controls", "declare",
-    "default", "defaultchecked", "defaultmuted", "defaultselected", "defer", "disabled", "draggable",
-    "enabled", "formnovalidate", "hidden", "indeterminate", "inert", "ismap", "itemscope", "loop", "multiple",
-    "muted", "nohref", "noresize", "noshade", "novalidate", "nowrap", "open", "pauseonexit", "readonly",
-    "required", "reversed", "scoped", "seamless", "selected", "sortable", "spellcheck", "translate",
-    "truespeed", "typemustmatch", "visible"];
-var booleanAttrsDict = Object.create(null);
-for (var i = 0, len = booleanAttrs.length; i < len; i++) {
-    booleanAttrsDict[booleanAttrs[i]] = true;
-}
-function updateAttrs(oldVnode, vnode) {
-    var key, cur, old, elm = vnode.elm, oldAttrs = oldVnode.data.attrs, attrs = vnode.data.attrs, namespaceSplit;
-    if (!oldAttrs && !attrs)
-        return;
-    if (oldAttrs === attrs)
-        return;
-    oldAttrs = oldAttrs || {};
-    attrs = attrs || {};
-    // update modified attributes, add new attributes
-    for (key in attrs) {
-        cur = attrs[key];
-        old = oldAttrs[key];
-        if (old !== cur) {
-            if (!cur && booleanAttrsDict[key])
-                elm.removeAttribute(key);
-            else {
-                namespaceSplit = key.split(":");
-                if (namespaceSplit.length > 1 && NamespaceURIs.hasOwnProperty(namespaceSplit[0]))
-                    elm.setAttributeNS(NamespaceURIs[namespaceSplit[0]], key, cur);
-                else
-                    elm.setAttribute(key, cur);
-            }
-        }
-    }
-    //remove removed attributes
-    // use `in` operator since the previous `for` iteration uses it (.i.e. add even attributes with undefined value)
-    // the other option is to remove all attributes with value == undefined
-    for (key in oldAttrs) {
-        if (!(key in attrs)) {
-            elm.removeAttribute(key);
-        }
-    }
-}
-exports.attributesModule = { create: updateAttrs, update: updateAttrs };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.attributesModule;
-
-},{}],33:[function(require,module,exports){
-"use strict";
-function updateClass(oldVnode, vnode) {
-    var cur, name, elm = vnode.elm, oldClass = oldVnode.data.class, klass = vnode.data.class;
-    if (!oldClass && !klass)
-        return;
-    if (oldClass === klass)
-        return;
-    oldClass = oldClass || {};
-    klass = klass || {};
-    for (name in oldClass) {
-        if (!klass[name]) {
-            elm.classList.remove(name);
-        }
-    }
-    for (name in klass) {
-        cur = klass[name];
-        if (cur !== oldClass[name]) {
-            elm.classList[cur ? 'add' : 'remove'](name);
-        }
-    }
-}
-exports.classModule = { create: updateClass, update: updateClass };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.classModule;
-
-},{}],34:[function(require,module,exports){
-"use strict";
-function updateDataset(oldVnode, vnode) {
-    var elm = vnode.elm, oldDataset = oldVnode.data.dataset, dataset = vnode.data.dataset, key;
-    if (!oldDataset && !dataset)
-        return;
-    if (oldDataset === dataset)
-        return;
-    oldDataset = oldDataset || {};
-    dataset = dataset || {};
-    for (key in oldDataset) {
-        if (!dataset[key]) {
-            delete elm.dataset[key];
-        }
-    }
-    for (key in dataset) {
-        if (oldDataset[key] !== dataset[key]) {
-            elm.dataset[key] = dataset[key];
-        }
-    }
-}
-exports.datasetModule = { create: updateDataset, update: updateDataset };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.datasetModule;
-
-},{}],35:[function(require,module,exports){
-"use strict";
-function updateProps(oldVnode, vnode) {
-    var key, cur, old, elm = vnode.elm, oldProps = oldVnode.data.props, props = vnode.data.props;
-    if (!oldProps && !props)
-        return;
-    if (oldProps === props)
-        return;
-    oldProps = oldProps || {};
-    props = props || {};
-    for (key in oldProps) {
-        if (!props[key]) {
-            delete elm[key];
-        }
-    }
-    for (key in props) {
-        cur = props[key];
-        old = oldProps[key];
-        if (old !== cur && (key !== 'value' || elm[key] !== cur)) {
-            elm[key] = cur;
-        }
-    }
-}
-exports.propsModule = { create: updateProps, update: updateProps };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.propsModule;
-
-},{}],36:[function(require,module,exports){
-"use strict";
-var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
-var nextFrame = function (fn) { raf(function () { raf(fn); }); };
-function setNextFrame(obj, prop, val) {
-    nextFrame(function () { obj[prop] = val; });
-}
-function updateStyle(oldVnode, vnode) {
-    var cur, name, elm = vnode.elm, oldStyle = oldVnode.data.style, style = vnode.data.style;
-    if (!oldStyle && !style)
-        return;
-    if (oldStyle === style)
-        return;
-    oldStyle = oldStyle || {};
-    style = style || {};
-    var oldHasDel = 'delayed' in oldStyle;
-    for (name in oldStyle) {
-        if (!style[name]) {
-            if (name.startsWith('--')) {
-                elm.style.removeProperty(name);
-            }
-            else {
-                elm.style[name] = '';
-            }
-        }
-    }
-    for (name in style) {
-        cur = style[name];
-        if (name === 'delayed') {
-            for (name in style.delayed) {
-                cur = style.delayed[name];
-                if (!oldHasDel || cur !== oldStyle.delayed[name]) {
-                    setNextFrame(elm.style, name, cur);
-                }
-            }
-        }
-        else if (name !== 'remove' && cur !== oldStyle[name]) {
-            if (name.startsWith('--')) {
-                elm.style.setProperty(name, cur);
-            }
-            else {
-                elm.style[name] = cur;
-            }
-        }
-    }
-}
-function applyDestroyStyle(vnode) {
-    var style, name, elm = vnode.elm, s = vnode.data.style;
-    if (!s || !(style = s.destroy))
-        return;
-    for (name in style) {
-        elm.style[name] = style[name];
-    }
-}
-function applyRemoveStyle(vnode, rm) {
-    var s = vnode.data.style;
-    if (!s || !s.remove) {
-        rm();
-        return;
-    }
-    var name, elm = vnode.elm, i = 0, compStyle, style = s.remove, amount = 0, applied = [];
-    for (name in style) {
-        applied.push(name);
-        elm.style[name] = style[name];
-    }
-    compStyle = getComputedStyle(elm);
-    var props = compStyle['transition-property'].split(', ');
-    for (; i < props.length; ++i) {
-        if (applied.indexOf(props[i]) !== -1)
-            amount++;
-    }
-    elm.addEventListener('transitionend', function (ev) {
-        if (ev.target === elm)
-            --amount;
-        if (amount === 0)
-            rm();
-    });
-}
-exports.styleModule = {
-    create: updateStyle,
-    update: updateStyle,
-    destroy: applyDestroyStyle,
-    remove: applyRemoveStyle
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = exports.styleModule;
-
-},{}],37:[function(require,module,exports){
-"use strict";
-var vnode_1 = require("./vnode");
-var is = require("./is");
-var htmldomapi_1 = require("./htmldomapi");
-function isUndef(s) { return s === undefined; }
-function isDef(s) { return s !== undefined; }
-var emptyNode = vnode_1.default('', {}, [], undefined, undefined);
-function sameVnode(vnode1, vnode2) {
-    return vnode1.key === vnode2.key && vnode1.sel === vnode2.sel;
-}
-function isVnode(vnode) {
-    return vnode.sel !== undefined;
-}
-function createKeyToOldIdx(children, beginIdx, endIdx) {
-    var i, map = {}, key;
-    for (i = beginIdx; i <= endIdx; ++i) {
-        key = children[i].key;
-        if (key !== undefined)
-            map[key] = i;
-    }
-    return map;
-}
-var hooks = ['create', 'update', 'remove', 'destroy', 'pre', 'post'];
-var h_1 = require("./h");
-exports.h = h_1.h;
-var thunk_1 = require("./thunk");
-exports.thunk = thunk_1.thunk;
-function init(modules, domApi) {
-    var i, j, cbs = {};
-    var api = domApi !== undefined ? domApi : htmldomapi_1.default;
-    for (i = 0; i < hooks.length; ++i) {
-        cbs[hooks[i]] = [];
-        for (j = 0; j < modules.length; ++j) {
-            var hook = modules[j][hooks[i]];
-            if (hook !== undefined) {
-                cbs[hooks[i]].push(hook);
-            }
-        }
-    }
-    function emptyNodeAt(elm) {
-        var id = elm.id ? '#' + elm.id : '';
-        var c = elm.className ? '.' + elm.className.split(' ').join('.') : '';
-        return vnode_1.default(api.tagName(elm).toLowerCase() + id + c, {}, [], undefined, elm);
-    }
-    function createRmCb(childElm, listeners) {
-        return function rmCb() {
-            if (--listeners === 0) {
-                var parent_1 = api.parentNode(childElm);
-                api.removeChild(parent_1, childElm);
-            }
-        };
-    }
-    function createElm(vnode, insertedVnodeQueue) {
-        var i, data = vnode.data;
-        if (data !== undefined) {
-            if (isDef(i = data.hook) && isDef(i = i.init)) {
-                i(vnode);
-                data = vnode.data;
-            }
-        }
-        var children = vnode.children, sel = vnode.sel;
-        if (sel !== undefined) {
-            // Parse selector
-            var hashIdx = sel.indexOf('#');
-            var dotIdx = sel.indexOf('.', hashIdx);
-            var hash = hashIdx > 0 ? hashIdx : sel.length;
-            var dot = dotIdx > 0 ? dotIdx : sel.length;
-            var tag = hashIdx !== -1 || dotIdx !== -1 ? sel.slice(0, Math.min(hash, dot)) : sel;
-            var elm = vnode.elm = isDef(data) && isDef(i = data.ns) ? api.createElementNS(i, tag)
-                : api.createElement(tag);
-            if (hash < dot)
-                elm.id = sel.slice(hash + 1, dot);
-            if (dotIdx > 0)
-                elm.className = sel.slice(dot + 1).replace(/\./g, ' ');
-            if (is.array(children)) {
-                for (i = 0; i < children.length; ++i) {
-                    api.appendChild(elm, createElm(children[i], insertedVnodeQueue));
-                }
-            }
-            else if (is.primitive(vnode.text)) {
-                api.appendChild(elm, api.createTextNode(vnode.text));
-            }
-            for (i = 0; i < cbs.create.length; ++i)
-                cbs.create[i](emptyNode, vnode);
-            i = vnode.data.hook; // Reuse variable
-            if (isDef(i)) {
-                if (i.create)
-                    i.create(emptyNode, vnode);
-                if (i.insert)
-                    insertedVnodeQueue.push(vnode);
-            }
-        }
-        else {
-            vnode.elm = api.createTextNode(vnode.text);
-        }
-        return vnode.elm;
-    }
-    function addVnodes(parentElm, before, vnodes, startIdx, endIdx, insertedVnodeQueue) {
-        for (; startIdx <= endIdx; ++startIdx) {
-            api.insertBefore(parentElm, createElm(vnodes[startIdx], insertedVnodeQueue), before);
-        }
-    }
-    function invokeDestroyHook(vnode) {
-        var i, j, data = vnode.data;
-        if (data !== undefined) {
-            if (isDef(i = data.hook) && isDef(i = i.destroy))
-                i(vnode);
-            for (i = 0; i < cbs.destroy.length; ++i)
-                cbs.destroy[i](vnode);
-            if (vnode.children !== undefined) {
-                for (j = 0; j < vnode.children.length; ++j) {
-                    i = vnode.children[j];
-                    if (typeof i !== "string") {
-                        invokeDestroyHook(i);
-                    }
-                }
-            }
-        }
-    }
-    function removeVnodes(parentElm, vnodes, startIdx, endIdx) {
-        for (; startIdx <= endIdx; ++startIdx) {
-            var i_1 = void 0, listeners = void 0, rm = void 0, ch = vnodes[startIdx];
-            if (isDef(ch)) {
-                if (isDef(ch.sel)) {
-                    invokeDestroyHook(ch);
-                    listeners = cbs.remove.length + 1;
-                    rm = createRmCb(ch.elm, listeners);
-                    for (i_1 = 0; i_1 < cbs.remove.length; ++i_1)
-                        cbs.remove[i_1](ch, rm);
-                    if (isDef(i_1 = ch.data) && isDef(i_1 = i_1.hook) && isDef(i_1 = i_1.remove)) {
-                        i_1(ch, rm);
-                    }
-                    else {
-                        rm();
-                    }
-                }
-                else {
-                    api.removeChild(parentElm, ch.elm);
-                }
-            }
-        }
-    }
-    function updateChildren(parentElm, oldCh, newCh, insertedVnodeQueue) {
-        var oldStartIdx = 0, newStartIdx = 0;
-        var oldEndIdx = oldCh.length - 1;
-        var oldStartVnode = oldCh[0];
-        var oldEndVnode = oldCh[oldEndIdx];
-        var newEndIdx = newCh.length - 1;
-        var newStartVnode = newCh[0];
-        var newEndVnode = newCh[newEndIdx];
-        var oldKeyToIdx;
-        var idxInOld;
-        var elmToMove;
-        var before;
-        while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-            if (isUndef(oldStartVnode)) {
-                oldStartVnode = oldCh[++oldStartIdx]; // Vnode has been moved left
-            }
-            else if (isUndef(oldEndVnode)) {
-                oldEndVnode = oldCh[--oldEndIdx];
-            }
-            else if (sameVnode(oldStartVnode, newStartVnode)) {
-                patchVnode(oldStartVnode, newStartVnode, insertedVnodeQueue);
-                oldStartVnode = oldCh[++oldStartIdx];
-                newStartVnode = newCh[++newStartIdx];
-            }
-            else if (sameVnode(oldEndVnode, newEndVnode)) {
-                patchVnode(oldEndVnode, newEndVnode, insertedVnodeQueue);
-                oldEndVnode = oldCh[--oldEndIdx];
-                newEndVnode = newCh[--newEndIdx];
-            }
-            else if (sameVnode(oldStartVnode, newEndVnode)) {
-                patchVnode(oldStartVnode, newEndVnode, insertedVnodeQueue);
-                api.insertBefore(parentElm, oldStartVnode.elm, api.nextSibling(oldEndVnode.elm));
-                oldStartVnode = oldCh[++oldStartIdx];
-                newEndVnode = newCh[--newEndIdx];
-            }
-            else if (sameVnode(oldEndVnode, newStartVnode)) {
-                patchVnode(oldEndVnode, newStartVnode, insertedVnodeQueue);
-                api.insertBefore(parentElm, oldEndVnode.elm, oldStartVnode.elm);
-                oldEndVnode = oldCh[--oldEndIdx];
-                newStartVnode = newCh[++newStartIdx];
-            }
-            else {
-                if (oldKeyToIdx === undefined) {
-                    oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx);
-                }
-                idxInOld = oldKeyToIdx[newStartVnode.key];
-                if (isUndef(idxInOld)) {
-                    api.insertBefore(parentElm, createElm(newStartVnode, insertedVnodeQueue), oldStartVnode.elm);
-                    newStartVnode = newCh[++newStartIdx];
-                }
-                else {
-                    elmToMove = oldCh[idxInOld];
-                    if (elmToMove.sel !== newStartVnode.sel) {
-                        api.insertBefore(parentElm, createElm(newStartVnode, insertedVnodeQueue), oldStartVnode.elm);
-                    }
-                    else {
-                        patchVnode(elmToMove, newStartVnode, insertedVnodeQueue);
-                        oldCh[idxInOld] = undefined;
-                        api.insertBefore(parentElm, elmToMove.elm, oldStartVnode.elm);
-                    }
-                    newStartVnode = newCh[++newStartIdx];
-                }
-            }
-        }
-        if (oldStartIdx > oldEndIdx) {
-            before = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm;
-            addVnodes(parentElm, before, newCh, newStartIdx, newEndIdx, insertedVnodeQueue);
-        }
-        else if (newStartIdx > newEndIdx) {
-            removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx);
-        }
-    }
-    function patchVnode(oldVnode, vnode, insertedVnodeQueue) {
-        var i, hook;
-        if (isDef(i = vnode.data) && isDef(hook = i.hook) && isDef(i = hook.prepatch)) {
-            i(oldVnode, vnode);
-        }
-        var elm = vnode.elm = oldVnode.elm;
-        var oldCh = oldVnode.children;
-        var ch = vnode.children;
-        if (oldVnode === vnode)
-            return;
-        if (vnode.data !== undefined) {
-            for (i = 0; i < cbs.update.length; ++i)
-                cbs.update[i](oldVnode, vnode);
-            i = vnode.data.hook;
-            if (isDef(i) && isDef(i = i.update))
-                i(oldVnode, vnode);
-        }
-        if (isUndef(vnode.text)) {
-            if (isDef(oldCh) && isDef(ch)) {
-                if (oldCh !== ch)
-                    updateChildren(elm, oldCh, ch, insertedVnodeQueue);
-            }
-            else if (isDef(ch)) {
-                if (isDef(oldVnode.text))
-                    api.setTextContent(elm, '');
-                addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue);
-            }
-            else if (isDef(oldCh)) {
-                removeVnodes(elm, oldCh, 0, oldCh.length - 1);
-            }
-            else if (isDef(oldVnode.text)) {
-                api.setTextContent(elm, '');
-            }
-        }
-        else if (oldVnode.text !== vnode.text) {
-            api.setTextContent(elm, vnode.text);
-        }
-        if (isDef(hook) && isDef(i = hook.postpatch)) {
-            i(oldVnode, vnode);
-        }
-    }
-    return function patch(oldVnode, vnode) {
-        var i, elm, parent;
-        var insertedVnodeQueue = [];
-        for (i = 0; i < cbs.pre.length; ++i)
-            cbs.pre[i]();
-        if (!isVnode(oldVnode)) {
-            oldVnode = emptyNodeAt(oldVnode);
-        }
-        if (sameVnode(oldVnode, vnode)) {
-            patchVnode(oldVnode, vnode, insertedVnodeQueue);
-        }
-        else {
-            elm = oldVnode.elm;
-            parent = api.parentNode(elm);
-            createElm(vnode, insertedVnodeQueue);
-            if (parent !== null) {
-                api.insertBefore(parent, vnode.elm, api.nextSibling(elm));
-                removeVnodes(parent, [oldVnode], 0, 0);
-            }
-        }
-        for (i = 0; i < insertedVnodeQueue.length; ++i) {
-            insertedVnodeQueue[i].data.hook.insert(insertedVnodeQueue[i]);
-        }
-        for (i = 0; i < cbs.post.length; ++i)
-            cbs.post[i]();
-        return vnode;
-    };
-}
-exports.init = init;
-
-},{"./h":29,"./htmldomapi":30,"./is":31,"./thunk":38,"./vnode":39}],38:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 "use strict";
 var h_1 = require("./h");
 function copyToThunk(vnode, thunk) {
@@ -3061,7 +1634,7 @@ exports.thunk = function thunk(sel, key, fn, args) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.thunk;
 
-},{"./h":29}],39:[function(require,module,exports){
+},{"./h":22}],25:[function(require,module,exports){
 "use strict";
 function vnode(sel, data, children, text, elm) {
     var key = data === undefined ? undefined : data.key;
@@ -3072,10 +1645,10 @@ exports.vnode = vnode;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vnode;
 
-},{}],40:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 module.exports = require('./lib/index');
 
-},{"./lib/index":41}],41:[function(require,module,exports){
+},{"./lib/index":27}],27:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -3107,7 +1680,7 @@ if (typeof self !== 'undefined') {
 var result = (0, _ponyfill2['default'])(root);
 exports['default'] = result;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":42}],42:[function(require,module,exports){
+},{"./ponyfill":28}],28:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3131,130 +1704,7 @@ function symbolObservablePonyfill(root) {
 
 	return result;
 };
-},{}],43:[function(require,module,exports){
-"use strict";
-var index_1 = require("../index");
-var empty = {};
-var DropRepeatsOperator = (function () {
-    function DropRepeatsOperator(ins, fn) {
-        this.ins = ins;
-        this.fn = fn;
-        this.type = 'dropRepeats';
-        this.out = null;
-        this.v = empty;
-    }
-    DropRepeatsOperator.prototype._start = function (out) {
-        this.out = out;
-        this.ins._add(this);
-    };
-    DropRepeatsOperator.prototype._stop = function () {
-        this.ins._remove(this);
-        this.out = null;
-        this.v = empty;
-    };
-    DropRepeatsOperator.prototype.isEq = function (x, y) {
-        return this.fn ? this.fn(x, y) : x === y;
-    };
-    DropRepeatsOperator.prototype._n = function (t) {
-        var u = this.out;
-        if (!u)
-            return;
-        var v = this.v;
-        if (v !== empty && this.isEq(t, v))
-            return;
-        this.v = t;
-        u._n(t);
-    };
-    DropRepeatsOperator.prototype._e = function (err) {
-        var u = this.out;
-        if (!u)
-            return;
-        u._e(err);
-    };
-    DropRepeatsOperator.prototype._c = function () {
-        var u = this.out;
-        if (!u)
-            return;
-        u._c();
-    };
-    return DropRepeatsOperator;
-}());
-exports.DropRepeatsOperator = DropRepeatsOperator;
-/**
- * Drops consecutive duplicate values in a stream.
- *
- * Marble diagram:
- *
- * ```text
- * --1--2--1--1--1--2--3--4--3--3|
- *     dropRepeats
- * --1--2--1--------2--3--4--3---|
- * ```
- *
- * Example:
- *
- * ```js
- * import dropRepeats from 'xstream/extra/dropRepeats'
- *
- * const stream = xs.of(1, 2, 1, 1, 1, 2, 3, 4, 3, 3)
- *   .compose(dropRepeats())
- *
- * stream.addListener({
- *   next: i => console.log(i),
- *   error: err => console.error(err),
- *   complete: () => console.log('completed')
- * })
- * ```
- *
- * ```text
- * > 1
- * > 2
- * > 1
- * > 2
- * > 3
- * > 4
- * > 3
- * > completed
- * ```
- *
- * Example with a custom isEqual function:
- *
- * ```js
- * import dropRepeats from 'xstream/extra/dropRepeats'
- *
- * const stream = xs.of('a', 'b', 'a', 'A', 'B', 'b')
- *   .compose(dropRepeats((x, y) => x.toLowerCase() === y.toLowerCase()))
- *
- * stream.addListener({
- *   next: i => console.log(i),
- *   error: err => console.error(err),
- *   complete: () => console.log('completed')
- * })
- * ```
- *
- * ```text
- * > a
- * > b
- * > a
- * > B
- * > completed
- * ```
- *
- * @param {Function} isEqual An optional function of type
- * `(x: T, y: T) => boolean` that takes an event from the input stream and
- * checks if it is equal to previous event, by returning a boolean.
- * @return {Stream}
- */
-function dropRepeats(isEqual) {
-    if (isEqual === void 0) { isEqual = void 0; }
-    return function dropRepeatsOperator(ins) {
-        return new index_1.Stream(new DropRepeatsOperator(ins, isEqual));
-    };
-}
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = dropRepeats;
-
-},{"../index":44}],44:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5227,7 +3677,7 @@ exports.MemoryStream = MemoryStream;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Stream;
 
-},{"symbol-observable":40}],45:[function(require,module,exports){
+},{"symbol-observable":26}],30:[function(require,module,exports){
 "use strict";
 var Signal = (function () {
     function Signal(iterable) {
@@ -5409,4 +3859,4 @@ Signal.combine = function combine() {
 };
 exports.Signal = Signal;
 
-},{}]},{},[1]);
+},{}]},{},[19]);

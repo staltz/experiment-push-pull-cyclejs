@@ -44,7 +44,8 @@ export {MainDOMSource} from './MainDOMSource';
  * VNode as input, and outputs the DOMSource object.
  * @function makeDOMDriver
  */
-export {makeDOMDriver, DOMDriverOptions} from './makeDOMDriver';
+//export {makeDOMDriver, DOMDriverOptions} from './makeDOMDriver';
+export {makeDOMDriver2} from './makeDOMDriver2';
 /**
  * The hyperscript function `h()` is a function to create virtual DOM objects,
  * also known as VNodes. Call
