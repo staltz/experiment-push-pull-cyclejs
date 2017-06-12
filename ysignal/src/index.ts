@@ -111,10 +111,10 @@ export class Signal<T> implements Iterable<T> {
     const ins = this;
     return Signal.create<R>({
       [Symbol.iterator](): Iterator<R> {
-        const tIter = ins.init();
+        const inIter = ins.init();
         return {
           next(): IteratorResult<R> {
-            const t = tIter.next();
+            const t = inIter.next();
             if (t.done) {
               return {done: true, value: undefined as any};
             } else {
@@ -130,7 +130,7 @@ export class Signal<T> implements Iterable<T> {
     const ins = this;
     return Signal.create<R>({
       [Symbol.iterator](): Iterator<R> {
-        const tIter = ins.init();
+        const inIter = ins.init();
         let sentSeed = false;
         let acc: R = seed;
         return {
@@ -139,7 +139,7 @@ export class Signal<T> implements Iterable<T> {
               sentSeed = true;
               return {done: false, value: seed};
             }
-            const t = tIter.next();
+            const t = inIter.next();
             if (t.done) {
               return {done: true, value: undefined as any};
             } else {
@@ -157,7 +157,7 @@ export class Signal<T> implements Iterable<T> {
     const ins = this;
     return Signal.create<T>({
       [Symbol.iterator](): Iterator<T> {
-        const tIter = ins.init();
+        const inIter = ins.init();
         let sentSeed = false;
         return {
           next(): IteratorResult<T> {
@@ -165,7 +165,7 @@ export class Signal<T> implements Iterable<T> {
               sentSeed = true;
               return {done: false, value: seed};
             }
-            return tIter.next();
+            return inIter.next();
           }
         };
       }
@@ -176,22 +176,45 @@ export class Signal<T> implements Iterable<T> {
     return operator(this);
   }
 
+  public filter(predicate: (t: T) => boolean, max: number = 1000): Signal<T> {
+    const ins = this;
+    return Signal.create<T>({
+      [Symbol.iterator](): Iterator<T> {
+        const inIter = ins.init();
+        return {
+          next(): IteratorResult<T> {
+            for (let i = 0; i < max; i++) {
+              const t = inIter.next();
+              if (t.done) {
+                return t;
+              }
+              if (predicate(t.value)) {
+                return t;
+              }
+            }
+            return {done: true, value: undefined as any};
+          }
+        };
+      }
+    });
+  }
+
   public drop(amount: number): Signal<T> {
     const ins = this;
     return Signal.create<T>({
       [Symbol.iterator](): Iterator<T> {
-        const tIter = ins.init();
+        const inIter = ins.init();
         let dropped = 0;
         return {
           next(): IteratorResult<T> {
             while (dropped < amount) {
-              const t = tIter.next();
+              const t = inIter.next();
               dropped += 1;
               if (t.done) {
                 return t;
               }
             }
-            return tIter.next();
+            return inIter.next();
           }
         };
       }
