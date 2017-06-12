@@ -2,6 +2,7 @@ import {Stream} from 'xstream';
 import {Signal} from 'ysignal';
 export interface EventsFnOptions {
   useCapture?: boolean;
+  preventDefault?: boolean;
 }
 
 export interface DOMSource {

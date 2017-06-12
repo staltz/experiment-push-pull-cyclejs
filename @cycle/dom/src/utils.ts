@@ -8,6 +8,10 @@ function isElement(obj: any) {
         typeof obj.nodeName === `string`;
 }
 
+export function isClassOrId(str: string): boolean {
+  return str.length > 1 && (str[0] === '.' || str[0] === '#');
+}
+
 export const SCOPE_PREFIX = `$$CYCLEDOM$$-`;
 
 export function getElement(selectors: Element | string): Element | null {
@@ -19,7 +23,7 @@ export function getElement(selectors: Element | string): Element | null {
     throw new Error(`Cannot render into unknown element \`${selectors}\``);
   } else if (!isElement(domElement)) {
     throw new Error(
-      `Given container is not a DOM element neither a ` + `selector string.`,
+      `Given container is not a DOM element neither a ` + `selector string.`
     );
   }
   return domElement;

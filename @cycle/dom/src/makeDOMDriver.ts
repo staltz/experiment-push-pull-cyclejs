@@ -7,13 +7,15 @@ import {DOMSource} from './DOMSource';
 import {MainDOMSource} from './MainDOMSource';
 import {VNode} from 'snabbdom/vnode';
 import {VNodeWrapper} from './VNodeWrapper';
+import {IsolateModule} from './IsolateModule';
+import {EventDelegator} from './EventDelegator';
 import {getElement} from './utils';
 import defaultModules from './modules';
 
 function makeDOMDriverInputGuard(modules: any) {
   if (!Array.isArray(modules)) {
     throw new Error(
-      `Optional modules option must be ` + `an array for snabbdom modules`,
+      `Optional modules option must be ` + `an array for snabbdom modules`
     );
   }
 }
@@ -22,7 +24,7 @@ function domDriverInputGuard(viewS: Signal<VNode>): void {
   if (!viewS || typeof viewS.init !== `function`) {
     throw new Error(
       `The DOM driver function expects as input a Signal of ` +
-        `virtual DOM elements`,
+        `virtual DOM elements`
     );
   }
 }
@@ -54,7 +56,7 @@ class MimicIterator<T> implements Iterator<T> {
       return target.next(value);
     } else {
       throw new Error(
-        'MimicIterator cannot be pulled before its target iterator is set.',
+        'MimicIterator cannot be pulled before its target iterator is set.'
       );
     }
   }
@@ -62,15 +64,17 @@ class MimicIterator<T> implements Iterator<T> {
 
 function makeDOMDriver(
   container: string | Element,
-  options?: DOMDriverOptions,
+  options?: DOMDriverOptions
 ) {
   if (!options) {
     options = {};
   }
   const modules = options.modules || defaultModules;
-  const patch = init(modules);
+  const isolateModule = new IsolateModule();
+  const patch = init([isolateModule.createModule()].concat(modules));
   const rootElement = getElement(container) || document.body;
   const vnodeWrapper = new VNodeWrapper(rootElement);
+  const delegators = new Map<string, EventDelegator>();
   makeDOMDriverInputGuard(modules);
 
   function DOMDriver(vnodeProxy: Iterable<VNode>, name = 'DOM'): DOMSource {
@@ -105,7 +109,14 @@ function makeDOMDriver(
       });
     }
 
-    return new MainDOMSource(rootElementS, iter, [], name);
+    return new MainDOMSource(
+      rootElementS,
+      iter,
+      [],
+      isolateModule,
+      delegators,
+      name
+    );
   }
 
   return DOMDriver;
