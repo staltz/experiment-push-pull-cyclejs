@@ -1,35 +1,66 @@
-import xs, {Stream} from 'xstream';
+import xs, {Stream, Subscription} from 'xstream';
 import {Signal} from 'ysignal';
 import {MainFn, Reducer} from './types';
 import {StateSource} from './StateSource';
 
+class FoldIterator<T> implements Iterator<T | undefined> {
+  private seed: T;
+  private acc: T | undefined;
+  private done: boolean;
+  private reducer$: Stream<Reducer<T>>;
+  private subscription: Subscription;
+  private count: number;
+  private latestRes: IteratorResult<T | undefined> | undefined;
+  private latestCount: number;
+
+  constructor(seed: T, reducer$: Stream<Reducer<T>>) {
+    this.seed = seed;
+    this.reducer$ = reducer$;
+    this.acc = seed;
+    this.done = false;
+    this.count = 0;
+    this.latestCount = -1;
+    const foldIterator = this;
+    this.subscription = reducer$.subscribe({
+      next: (reducer: Reducer<T>) => {
+        const next = reducer(foldIterator.acc);
+        if (typeof next !== 'undefined') {
+          foldIterator.acc = next;
+          foldIterator.count++;
+        }
+      },
+      error: (e: any) => {},
+      complete: () => {
+        foldIterator.done = true;
+        foldIterator.count++;
+      }
+    });
+  }
+
+  next(): IteratorResult<T | undefined> {
+    if (this.latestCount >= 0 && this.latestCount === this.count) {
+      return this.latestRes as IteratorResult<T>;
+    } else {
+      this.latestCount = this.count;
+      this.latestRes = {
+        done: this.done,
+        value: this.done ? undefined : this.acc
+      };
+      return this.latestRes;
+    }
+  }
+
+  return(): IteratorResult<T | undefined> {
+    this.subscription.unsubscribe();
+    return {done: true, value: undefined};
+  }
+}
+
 function fold<T>(seed: T, reducer$: Stream<Reducer<T>>): Signal<T | undefined> {
   return Signal.create<T | undefined>({
     [Symbol.iterator](): Iterator<T | undefined> {
-      let acc: T | undefined = seed;
-      let done: boolean = false;
-      const subscription = reducer$.subscribe({
-        next: (reducer: Reducer<T>) => {
-          const next = reducer(acc);
-          if (typeof next !== 'undefined') {
-            acc = next;
-          }
-        },
-        error: (e: any) => {},
-        complete: () => {
-          done = true;
-        },
-      });
-      return {
-        next(): IteratorResult<T | undefined> {
-          return {done, value: done ? undefined : acc};
-        },
-        return(): IteratorResult<T | undefined> {
-          subscription.unsubscribe();
-          return {done: true, value: undefined};
-        },
-      };
-    },
+      return new FoldIterator(seed, reducer$);
+    }
   });
 }
 
@@ -66,10 +97,10 @@ export type MainOnionified<T, So extends OSo<T>, Si extends OSi<T>> = MainFn<
 
 export function onionify<T, So extends OSo<T>, Si extends OSi<T>>(
   main: MainFn<So, Si>,
-  name: string = 'onion',
+  name: string = 'onion'
 ): MainOnionified<T, So, Si> {
   return function mainOnionified(
-    sources: Omit<So, 'onion'>,
+    sources: Omit<So, 'onion'>
   ): Omit<Si, 'onion'> {
     const reducerMimic$ = xs.create<Reducer<T>>();
     const stateS = fold(void 0, reducerMimic$);

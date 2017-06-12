@@ -45,6 +45,8 @@ export interface CombineSignature {
   (...signals: Array<Signal<any>>): Signal<Array<any>>;
 }
 
+export type UpdateCountIterator<T> = Iterator<T> & {count: number};
+
 export class Signal<T> implements Iterable<T> {
   constructor(iterable: Iterable<T>) {
     this.iterable = iterable;
@@ -91,9 +93,21 @@ export class Signal<T> implements Iterable<T> {
     return new Signal<Array<any>>({
       [Symbol.iterator](): Iterator<Array<any>> {
         const iters = signals.map(s => s.init());
+        const latestCounts = signals.map(() => -1);
+        const latestVals: Array<IteratorResult<any> | undefined> = signals.map(
+          () => void 0
+        );
         return {
           next(): IteratorResult<Array<any>> {
-            const results = iters.map(iter => iter.next());
+            const results = iters.map((iter, i) => {
+              const returnable = latestCounts[i] ===
+                (iter as UpdateCountIterator<any>).count
+                ? latestVals[i] as IteratorResult<any>
+                : iter.next();
+              latestCounts[i] = (iter as UpdateCountIterator<any>).count;
+              latestVals[i] = returnable;
+              return returnable;
+            });
             if (results.some(r => r.done)) {
               return {done: true, value: undefined as any};
             } else {
@@ -117,13 +131,24 @@ export class Signal<T> implements Iterable<T> {
     return Signal.create<R>({
       [Symbol.iterator](): Iterator<R> {
         const inIter = ins.init();
+        let latestCount: number = -1;
+        let latestR: IteratorResult<R> | undefined;
         return {
-          next(): IteratorResult<R> {
+          next: function(): IteratorResult<R> {
             const t = inIter.next();
-            if (t.done) {
-              return {done: true, value: undefined as any};
+            if (
+              latestCount >= 0 &&
+              latestCount === (inIter as UpdateCountIterator<T>).count
+            ) {
+              return latestR as IteratorResult<R>;
             } else {
-              return {done: false, value: project(t.value)};
+              latestR = t.done
+                ? t as any
+                : {done: false, value: project(t.value)};
+              latestCount =
+                (inIter as UpdateCountIterator<T>).count || latestCount;
+              this.count = latestCount;
+              return latestR as IteratorResult<R>;
             }
           }
         };
@@ -138,6 +163,8 @@ export class Signal<T> implements Iterable<T> {
         const inIter = ins.init();
         let sentSeed = false;
         let acc: R = seed;
+        let latestCount: number = -1;
+        let latestR: IteratorResult<R> | undefined;
         return {
           next(): IteratorResult<R> {
             if (!sentSeed) {
@@ -145,12 +172,20 @@ export class Signal<T> implements Iterable<T> {
               return {done: false, value: seed};
             }
             const t = inIter.next();
-            if (t.done) {
-              return {done: true, value: undefined as any};
+            if (
+              latestCount >= 0 &&
+              latestCount === (inIter as UpdateCountIterator<T>).count
+            ) {
+              return latestR as IteratorResult<R>;
             } else {
-              const r = accumulate(acc, t.value);
-              acc = r;
-              return {done: false, value: r};
+              latestR = t.done
+                ? t as any
+                : {done: false, value: accumulate(acc, t.value)};
+              acc = (latestR as IteratorResult<R>).value;
+              latestCount =
+                (inIter as UpdateCountIterator<T>).count || latestCount;
+              this.count = latestCount;
+              return latestR as IteratorResult<R>;
             }
           }
         };
@@ -210,6 +245,8 @@ export class Signal<T> implements Iterable<T> {
       [Symbol.iterator](): Iterator<T> {
         const inIter = ins.init();
         let dropped = 0;
+        let latestCount: number = -1;
+        let latestT: IteratorResult<T> | undefined;
         return {
           next(): IteratorResult<T> {
             while (dropped < amount) {
@@ -219,7 +256,19 @@ export class Signal<T> implements Iterable<T> {
                 return t;
               }
             }
-            return inIter.next();
+            const t = inIter.next();
+            if (
+              latestCount >= 0 &&
+              latestCount === (inIter as UpdateCountIterator<T>).count
+            ) {
+              return latestT as IteratorResult<T>;
+            } else {
+              latestT = t;
+              latestCount =
+                (inIter as UpdateCountIterator<T>).count || latestCount;
+              this.count = latestCount;
+              return latestT as IteratorResult<T>;
+            }
           }
         };
       }

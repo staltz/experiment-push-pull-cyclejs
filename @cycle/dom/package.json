@@ -6,7 +6,7 @@
     "url": "https://github.com/cyclejs/cyclejs/issues"
   },
   "dependencies": {
-    "@cycle/run": "*",
+    "@cycle/run": "file:../run",
     "es6-map": "^0.1.4",
     "snabbdom": "0.6.3",
     "snabbdom-selector": "1.1.1",
@@ -21,7 +21,7 @@
     "simulant": "^0.2.2",
     "snabbdom-jsx": "^0.3.0",
     "string.prototype.startswith": "^0.2.0",
-    "xstream": "10.x.x"
+    "xstream": "file:../../xstream"
   },
   "engines": {
     "node": ">=0.10.0"

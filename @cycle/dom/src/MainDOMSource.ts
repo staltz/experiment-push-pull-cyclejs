@@ -212,7 +212,6 @@ export class MainDOMSource implements DOMSource {
       .mapTo(animationFrame$)
       .flatten()
       .sample(rootElementS)
-      .map(([_, element]) => element)
       .compose(dropRepeats())
       .map(function setupEventDelegatorOnTopElement(rootElement) {
         // Event listener just for the root element

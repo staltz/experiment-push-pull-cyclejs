@@ -36,12 +36,19 @@ function main(sources: Sources): Sinks {
 
   const reducer$ = Stream.merge(initialReducer$, incrementReducer$);
 
-  const vdomS = Signal.combine(
-    sources.state.stateS,
-    sources.windowHeight
-  ).map(([state, height]) =>
+  // const vdomS = Signal.combine(
+  //   sources.state.stateS,
+  //   sources.windowHeight
+  // ).map(([state, height]) =>
+  //   div('.container', [
+  //     div('.height', 'Height: ' + height),
+  //     button('.foo', 'Count: ' + state.count),
+  //     div('.not', 'Not this')
+  //   ])
+  // );
+
+  const vdomS = sources.state.stateS.map(state =>
     div('.container', [
-      div('.height', 'Height: ' + height),
       button('.foo', 'Count: ' + state.count),
       div('.not', 'Not this')
     ])

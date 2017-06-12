@@ -1,4 +1,4 @@
-import {Driver} from '@cycle/run';
+import {Driver, PushPullProxy} from '@cycle/run';
 import {init} from 'snabbdom';
 import {Module} from 'snabbdom/modules/module';
 import {Stream} from 'xstream';
@@ -41,27 +41,6 @@ function reportSnabbdomError(err: any): void {
   (console.error || console.log)(err);
 }
 
-class MimicIterator<T> implements Iterator<T> {
-  private target: Iterator<T> | undefined;
-
-  constructor() {}
-
-  public imitate(target: Iterator<T>) {
-    this.target = target;
-  }
-
-  public next(value?: any): IteratorResult<T> {
-    const target = this.target;
-    if (target) {
-      return target.next(value);
-    } else {
-      throw new Error(
-        'MimicIterator cannot be pulled before its target iterator is set.'
-      );
-    }
-  }
-}
-
 function makeDOMDriver(
   container: string | Element,
   options?: DOMDriverOptions
@@ -87,14 +66,15 @@ function makeDOMDriver(
       .map(unwrapElementFromVNode)
       .startWith(rootElement);
 
-    const iter: MimicIterator<Element> = new MimicIterator<Element>();
+    const rootElementProxyS = new PushPullProxy<Element>();
+    const iter: Iterator<Element> = rootElementProxyS[Symbol.iterator]();
 
     // Start the snabbdom patching, over time
     const listener = {error: reportSnabbdomError};
     if (document.readyState === 'loading') {
       document.addEventListener('readystatechange', () => {
         if (document.readyState === 'interactive') {
-          iter.imitate(rootElementS.init());
+          rootElementProxyS.imitateIterator(rootElementS.init());
           requestAnimationFrame(function again1() {
             iter.next();
             requestAnimationFrame(again1);
@@ -102,7 +82,7 @@ function makeDOMDriver(
         }
       });
     } else {
-      iter.imitate(rootElementS.init());
+      rootElementProxyS.imitateIterator(rootElementS.init());
       requestAnimationFrame(function again2() {
         iter.next();
         requestAnimationFrame(again2);

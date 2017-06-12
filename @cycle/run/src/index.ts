@@ -2,6 +2,9 @@ import xs, {Stream, MemoryStream} from 'xstream';
 import {adapt} from './adapt';
 
 export class PushPullProxy<T> extends MemoryStream<T> implements Iterable<T> {
+  private iterator: Iterator<T>;
+  private target: Iterator<T> | undefined;
+
   constructor() {
     super(undefined as any);
     const proxy = this;
@@ -12,16 +15,19 @@ export class PushPullProxy<T> extends MemoryStream<T> implements Iterable<T> {
         } else {
           return {done: false, value: undefined as any};
         }
+      },
+      get count(): number | undefined {
+        if (proxy.target && typeof (proxy.target as any).count === 'number') {
+          return (proxy.target as any).count;
+        }
+        return void 0;
       }
-    };
+    } as Iterator<T> & {count: number};
   }
 
   public [Symbol.iterator](): Iterator<T> {
     return this.target || this.iterator;
   }
-
-  private iterator: Iterator<T>;
-  private target: Iterator<T> | undefined;
 
   public imitateIterator(iterator: Iterator<T>): void {
     this.target = iterator;

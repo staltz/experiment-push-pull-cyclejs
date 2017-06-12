@@ -17,10 +17,18 @@ function main(sources) {
         return { count: 0 };
     });
     var reducer$ = xstream_1.Stream.merge(initialReducer$, incrementReducer$);
-    var vdomS = ysignal_1.Signal.combine(sources.state.stateS, sources.windowHeight).map(function (_a) {
-        var state = _a[0],
-            height = _a[1];
-        return dom_1.div('.container', [dom_1.div('.height', 'Height: ' + height), dom_1.button('.foo', 'Count: ' + state.count), dom_1.div('.not', 'Not this')]);
+    // const vdomS = Signal.combine(
+    //   sources.state.stateS,
+    //   sources.windowHeight
+    // ).map(([state, height]) =>
+    //   div('.container', [
+    //     div('.height', 'Height: ' + height),
+    //     button('.foo', 'Count: ' + state.count),
+    //     div('.not', 'Not this')
+    //   ])
+    // );
+    var vdomS = sources.state.stateS.map(function (state) {
+        return dom_1.div('.container', [dom_1.button('.foo', 'Count: ' + state.count), dom_1.div('.not', 'Not this')]);
     });
     return {
         DOM: vdomS,
@@ -596,10 +604,6 @@ var MainDOMSource = (function () {
             .mapTo(animationFrame$)
             .flatten()
             .sample(rootElementS)
-            .map(function (_a) {
-            var _ = _a[0], element = _a[1];
-            return element;
-        })
             .compose(dropRepeats_1.default())
             .map(function setupEventDelegatorOnTopElement(rootElement) {
             // Event listener just for the root element
@@ -1279,6 +1283,7 @@ exports.totalIsolateSink = totalIsolateSink;
 
 },{"./utils":18,"snabbdom/vnode":39}],15:[function(require,module,exports){
 "use strict";
+var run_1 = require("@cycle/run");
 var snabbdom_1 = require("snabbdom");
 var ysignal_1 = require("ysignal");
 var MainDOMSource_1 = require("./MainDOMSource");
@@ -1303,23 +1308,6 @@ function unwrapElementFromVNode(vnode) {
 function reportSnabbdomError(err) {
     (console.error || console.log)(err);
 }
-var MimicIterator = (function () {
-    function MimicIterator() {
-    }
-    MimicIterator.prototype.imitate = function (target) {
-        this.target = target;
-    };
-    MimicIterator.prototype.next = function (value) {
-        var target = this.target;
-        if (target) {
-            return target.next(value);
-        }
-        else {
-            throw new Error('MimicIterator cannot be pulled before its target iterator is set.');
-        }
-    };
-    return MimicIterator;
-}());
 function makeDOMDriver(container, options) {
     if (!options) {
         options = {};
@@ -1341,13 +1329,14 @@ function makeDOMDriver(container, options) {
             .drop(1)
             .map(unwrapElementFromVNode)
             .startWith(rootElement);
-        var iter = new MimicIterator();
+        var rootElementProxyS = new run_1.PushPullProxy();
+        var iter = rootElementProxyS[Symbol.iterator]();
         // Start the snabbdom patching, over time
         var listener = { error: reportSnabbdomError };
         if (document.readyState === 'loading') {
             document.addEventListener('readystatechange', function () {
                 if (document.readyState === 'interactive') {
-                    iter.imitate(rootElementS.init());
+                    rootElementProxyS.imitateIterator(rootElementS.init());
                     requestAnimationFrame(function again1() {
                         iter.next();
                         requestAnimationFrame(again1);
@@ -1356,7 +1345,7 @@ function makeDOMDriver(container, options) {
             });
         }
         else {
-            iter.imitate(rootElementS.init());
+            rootElementProxyS.imitateIterator(rootElementS.init());
             requestAnimationFrame(function again2() {
                 iter.next();
                 requestAnimationFrame(again2);
@@ -1368,7 +1357,7 @@ function makeDOMDriver(container, options) {
 }
 exports.makeDOMDriver = makeDOMDriver;
 
-},{"./IsolateModule":6,"./MainDOMSource":7,"./VNodeWrapper":9,"./modules":17,"./utils":18,"snabbdom":37,"ysignal":45}],16:[function(require,module,exports){
+},{"./IsolateModule":6,"./MainDOMSource":7,"./VNodeWrapper":9,"./modules":17,"./utils":18,"@cycle/run":20,"snabbdom":37,"ysignal":45}],16:[function(require,module,exports){
 "use strict";
 function createMatchesSelector() {
     var vendor;
@@ -1502,6 +1491,12 @@ var PushPullProxy = (function (_super) {
                 else {
                     return { done: false, value: undefined };
                 }
+            },
+            get count() {
+                if (proxy.target && typeof proxy.target.count === 'number') {
+                    return proxy.target.count;
+                }
+                return void 0;
             }
         };
         return _this;
@@ -2050,32 +2045,53 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var xstream_1 = require("xstream");
 var ysignal_1 = require("ysignal");
 var StateSource_1 = require("./StateSource");
+var FoldIterator = (function () {
+    function FoldIterator(seed, reducer$) {
+        this.seed = seed;
+        this.reducer$ = reducer$;
+        this.acc = seed;
+        this.done = false;
+        this.count = 0;
+        this.latestCount = -1;
+        var foldIterator = this;
+        this.subscription = reducer$.subscribe({
+            next: function (reducer) {
+                var next = reducer(foldIterator.acc);
+                if (typeof next !== 'undefined') {
+                    foldIterator.acc = next;
+                    foldIterator.count++;
+                }
+            },
+            error: function (e) { },
+            complete: function () {
+                foldIterator.done = true;
+                foldIterator.count++;
+            }
+        });
+    }
+    FoldIterator.prototype.next = function () {
+        if (this.latestCount >= 0 && this.latestCount === this.count) {
+            return this.latestRes;
+        }
+        else {
+            this.latestCount = this.count;
+            this.latestRes = {
+                done: this.done,
+                value: this.done ? undefined : this.acc
+            };
+            return this.latestRes;
+        }
+    };
+    FoldIterator.prototype.return = function () {
+        this.subscription.unsubscribe();
+        return { done: true, value: undefined };
+    };
+    return FoldIterator;
+}());
 function fold(seed, reducer$) {
     return ysignal_1.Signal.create((_a = {},
         _a[Symbol.iterator] = function () {
-            var acc = seed;
-            var done = false;
-            var subscription = reducer$.subscribe({
-                next: function (reducer) {
-                    var next = reducer(acc);
-                    if (typeof next !== 'undefined') {
-                        acc = next;
-                    }
-                },
-                error: function (e) { },
-                complete: function () {
-                    done = true;
-                },
-            });
-            return {
-                next: function () {
-                    return { done: done, value: done ? undefined : acc };
-                },
-                return: function () {
-                    subscription.unsubscribe();
-                    return { done: true, value: undefined };
-                },
-            };
+            return new FoldIterator(seed, reducer$);
         },
         _a));
     var _a;
@@ -4087,7 +4103,6 @@ var Sample = (function () {
     Sample.prototype._stop = function () {
         this.ins._remove(this);
         this.out = NO;
-        // this.itr.return();
         this.itr = NO;
     };
     Sample.prototype._n = function (t) {
@@ -4107,7 +4122,7 @@ var Sample = (function () {
             u._c();
         }
         else {
-            u._n([t, r.value]);
+            u._n(r.value);
         }
     };
     Sample.prototype._e = function (err) {
@@ -4786,6 +4801,14 @@ var Stream = (function () {
     Stream.prototype.endWhen = function (other) {
         return new (this.ctor())(new EndWhen(other, this));
     };
+    /**
+     * We might need also some sample variant that returns Stream<[T, R]>
+     * (T is from the Stream, R is from the Signal), but for now we have
+     * just Stream<R> in order to avoid the array allocation, because this
+     * code is critical in Cycle DOM when pulling the chain on every animation
+     * frame.
+     * @param iterable
+     */
     Stream.prototype.sample = function (iterable) {
         return new Stream(new Sample(iterable, this));
     };
@@ -5271,14 +5294,23 @@ var Signal = (function () {
         return Signal.create((_a = {},
             _a[Symbol.iterator] = function () {
                 var inIter = ins.init();
+                var latestCount = -1;
+                var latestR;
                 return {
                     next: function () {
                         var t = inIter.next();
-                        if (t.done) {
-                            return { done: true, value: undefined };
+                        if (latestCount >= 0 &&
+                            latestCount === inIter.count) {
+                            return latestR;
                         }
                         else {
-                            return { done: false, value: project(t.value) };
+                            latestR = t.done
+                                ? t
+                                : { done: false, value: project(t.value) };
+                            latestCount =
+                                inIter.count || latestCount;
+                            this.count = latestCount;
+                            return latestR;
                         }
                     }
                 };
@@ -5293,6 +5325,8 @@ var Signal = (function () {
                 var inIter = ins.init();
                 var sentSeed = false;
                 var acc = seed;
+                var latestCount = -1;
+                var latestR;
                 return {
                     next: function () {
                         if (!sentSeed) {
@@ -5300,13 +5334,19 @@ var Signal = (function () {
                             return { done: false, value: seed };
                         }
                         var t = inIter.next();
-                        if (t.done) {
-                            return { done: true, value: undefined };
+                        if (latestCount >= 0 &&
+                            latestCount === inIter.count) {
+                            return latestR;
                         }
                         else {
-                            var r = accumulate(acc, t.value);
-                            acc = r;
-                            return { done: false, value: r };
+                            latestR = t.done
+                                ? t
+                                : { done: false, value: accumulate(acc, t.value) };
+                            acc = latestR.value;
+                            latestCount =
+                                inIter.count || latestCount;
+                            this.count = latestCount;
+                            return latestR;
                         }
                     }
                 };
@@ -5366,16 +5406,29 @@ var Signal = (function () {
             _a[Symbol.iterator] = function () {
                 var inIter = ins.init();
                 var dropped = 0;
+                var latestCount = -1;
+                var latestT;
                 return {
                     next: function () {
                         while (dropped < amount) {
-                            var t = inIter.next();
+                            var t_1 = inIter.next();
                             dropped += 1;
-                            if (t.done) {
-                                return t;
+                            if (t_1.done) {
+                                return t_1;
                             }
                         }
-                        return inIter.next();
+                        var t = inIter.next();
+                        if (latestCount >= 0 &&
+                            latestCount === inIter.count) {
+                            return latestT;
+                        }
+                        else {
+                            latestT = t;
+                            latestCount =
+                                inIter.count || latestCount;
+                            this.count = latestCount;
+                            return latestT;
+                        }
                     }
                 };
             },
@@ -5392,9 +5445,19 @@ Signal.combine = function combine() {
     return new Signal((_a = {},
         _a[Symbol.iterator] = function () {
             var iters = signals.map(function (s) { return s.init(); });
+            var latestCounts = signals.map(function () { return -1; });
+            var latestVals = signals.map(function () { return void 0; });
             return {
                 next: function () {
-                    var results = iters.map(function (iter) { return iter.next(); });
+                    var results = iters.map(function (iter, i) {
+                        var returnable = latestCounts[i] ===
+                            iter.count
+                            ? latestVals[i]
+                            : iter.next();
+                        latestCounts[i] = iter.count;
+                        latestVals[i] = returnable;
+                        return returnable;
+                    });
                     if (results.some(function (r) { return r.done; })) {
                         return { done: true, value: undefined };
                     }

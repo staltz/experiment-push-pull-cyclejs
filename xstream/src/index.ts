@@ -1089,21 +1089,21 @@ class ReplaceError<T> implements Operator<T, T> {
   }
 }
 
-class Sample<T, R> implements Operator<any, [T, R]> {
+class Sample<R> implements Operator<any, R> {
   public type = 'sample';
   public ins: Stream<any>;
-  public out: Stream<[T, R]>;
+  public out: Stream<R>;
   public sig: Iterable<R>;
   public itr: Iterator<R>;
 
-  constructor(signal: Iterable<R>, ins: Stream<T>) {
+  constructor(signal: Iterable<R>, ins: Stream<any>) {
     this.ins = ins;
     this.out = NO as any;
     this.sig = signal;
     this.itr = NO as any;
   }
 
-  _start(out: Stream<[T, R]>): void {
+  _start(out: Stream<R>): void {
     this.out = out;
     this.itr = this.sig[Symbol.iterator]();
     this.ins._add(this);
@@ -1112,11 +1112,10 @@ class Sample<T, R> implements Operator<any, [T, R]> {
   _stop(): void {
     this.ins._remove(this);
     this.out = NO as any;
-    // this.itr.return();
     this.itr = NO as any;
   }
 
-  _n(t: T) {
+  _n(t: any) {
     const u = this.out;
     if (u === NO) {
       return;
@@ -1131,7 +1130,7 @@ class Sample<T, R> implements Operator<any, [T, R]> {
     if (r.done) {
       u._c();
     } else {
-      u._n([t, r.value]);
+      u._n(r.value);
     }
   }
 
@@ -1928,8 +1927,16 @@ export class Stream<T> implements InternalListener<T> {
     return new (this.ctor())<T>(new EndWhen<T>(other, this));
   }
 
-  sample<R>(iterable: Iterable<R>): Stream<[T, R]> {
-    return new Stream<[T, R]>(new Sample<T, R>(iterable, this));
+  /**
+   * TODO: We might need also some sample variant that returns Stream<[T, R]>
+   * (T is from the Stream, R is from the Signal), but for now we have
+   * just Stream<R> in order to avoid the array allocation, because this
+   * code is critical in Cycle DOM when pulling the chain on every animation
+   * frame.
+   * @param iterable
+   */
+  sample<R>(iterable: Iterable<R>): Stream<R> {
+    return new Stream<R>(new Sample<R>(iterable, this));
   }
 
   /**

@@ -3,7 +3,8 @@
     "name": "staltz"
   },
   "dependencies": {
-    "xstream": ">=10"
+    "xstream": "file:../xstream",
+    "ysignal": "file:../ysignal"
   },
   "description": "Augments your Cycle.js main function with onion-shaped state management",
   "devDependencies": {
