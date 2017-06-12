@@ -14,7 +14,7 @@ function copy<T>(a: Array<T>): Array<T> {
 
 function and<T>(
   f1: (t: T) => boolean,
-  f2: (t: T) => boolean,
+  f2: (t: T) => boolean
 ): (t: T) => boolean {
   return function andFn(t: T): boolean {
     return f1(t) && f2(t);
@@ -43,7 +43,7 @@ export interface InternalListener<T> {
 const NO_IL: InternalListener<any> = {
   _n: noop,
   _e: noop,
-  _c: noop,
+  _c: noop
 };
 
 export interface InternalProducer<T> {
@@ -90,10 +90,10 @@ export interface Observable<T> {
 
 // mutates the input
 function internalizeProducer<T>(
-  producer: Producer<T> & Partial<InternalProducer<T>>,
+  producer: Producer<T> & Partial<InternalProducer<T>>
 ) {
   producer._start = function _start(
-    il: InternalListener<T> & Partial<Listener<T>>,
+    il: InternalListener<T> & Partial<Listener<T>>
   ) {
     il.next = il._n;
     il.error = il._e;
@@ -425,7 +425,7 @@ class FromPromise<T> implements InternalProducer<T> {
         },
         (e: any) => {
           out._e(e);
-        },
+        }
       )
       .then(noop, (err: any) => {
         setTimeout(() => {
@@ -944,7 +944,7 @@ class MapFlatten<T, R> implements Operator<T, R> {
     if (s === NO) return;
     if (inner !== NO && il !== NO_IL) inner._remove(il);
     (this.inner = s as Stream<R>)._add(
-      (this.il = new MapFlattenListener(u, this)),
+      (this.il = new MapFlattenListener(u, this))
     );
   }
 
@@ -1089,21 +1089,21 @@ class ReplaceError<T> implements Operator<T, T> {
   }
 }
 
-class Sample<T> implements Operator<any, T> {
+class Sample<T, R> implements Operator<any, [T, R]> {
   public type = 'sample';
   public ins: Stream<any>;
-  public out: Stream<T>;
-  public sig: Iterable<T>;
-  public itr: Iterator<T>;
+  public out: Stream<[T, R]>;
+  public sig: Iterable<R>;
+  public itr: Iterator<R>;
 
-  constructor(signal: Iterable<T>, ins: Stream<any>) {
+  constructor(signal: Iterable<R>, ins: Stream<T>) {
     this.ins = ins;
     this.out = NO as any;
     this.sig = signal;
     this.itr = NO as any;
   }
 
-  _start(out: Stream<T>): void {
+  _start(out: Stream<[T, R]>): void {
     this.out = out;
     this.itr = this.sig[Symbol.iterator]();
     this.ins._add(this);
@@ -1121,17 +1121,17 @@ class Sample<T> implements Operator<any, T> {
     if (u === NO) {
       return;
     }
-    let r;
+    let r: IteratorResult<R>;
     try {
       r = this.itr.next();
     } catch (e) {
       u._e(e);
       return;
     }
-    if ((r as any).done) {
+    if (r.done) {
       u._c();
     } else {
-      u._n((r as any).value);
+      u._n([t, r.value]);
     }
   }
 
@@ -1359,7 +1359,7 @@ export class Stream<T> implements InternalListener<T> {
     ) {
       return this._hasNoSinks(
         ((x as any) as OutSender<any>).out,
-        trace.concat(x),
+        trace.concat(x)
       );
     } else if ((x as Stream<any>)._ils) {
       for (let i = 0, N = (x as Stream<any>)._ils.length; i < N; i++) {
@@ -1492,7 +1492,7 @@ export class Stream<T> implements InternalListener<T> {
       _start(il: InternalListener<any>) {
         il._c();
       },
-      _stop: noop,
+      _stop: noop
     });
   }
 
@@ -1517,7 +1517,7 @@ export class Stream<T> implements InternalListener<T> {
       _start(il: InternalListener<any>) {
         il._e(error);
       },
-      _stop: noop,
+      _stop: noop
     });
   }
 
@@ -1529,7 +1529,7 @@ export class Stream<T> implements InternalListener<T> {
    * @return {Stream}
    */
   static from<T>(
-    input: Promise<T> | Stream<T> | Array<T> | Observable<T>,
+    input: Promise<T> | Stream<T> | Array<T> | Observable<T>
   ): Stream<T> {
     if (typeof input[$$observable] === 'function') {
       return Stream.fromObservable<T>(input);
@@ -1540,7 +1540,7 @@ export class Stream<T> implements InternalListener<T> {
     }
 
     throw new TypeError(
-      `Type of input to from() must be an Array, Promise, or Observable`,
+      `Type of input to from() must be an Array, Promise, or Observable`
     );
   }
 
@@ -1788,7 +1788,7 @@ export class Stream<T> implements InternalListener<T> {
     const p = this._prod;
     if (p instanceof Filter) {
       return new Stream<T>(
-        new Filter<T>(and((p as Filter<T>).f, passes), (p as Filter<T>).ins),
+        new Filter<T>(and((p as Filter<T>).f, passes), (p as Filter<T>).ins)
       );
     }
     return new Stream<T>(new Filter<T>(passes, this));
@@ -1928,8 +1928,8 @@ export class Stream<T> implements InternalListener<T> {
     return new (this.ctor())<T>(new EndWhen<T>(other, this));
   }
 
-  sample<R>(iterable: Iterable<R>): Stream<R> {
-    return new Stream<R>(new Sample<R>(iterable, this));
+  sample<R>(iterable: Iterable<R>): Stream<[T, R]> {
+    return new Stream<[T, R]>(new Sample<T, R>(iterable, this));
   }
 
   /**
@@ -2022,7 +2022,7 @@ export class Stream<T> implements InternalListener<T> {
     return new Stream<R>(
       p instanceof MapOp && !(p instanceof FilterMapFusion)
         ? new MapFlatten(p as MapOp<any, Stream<R>>)
-        : new Flatten(this),
+        : new Flatten(this)
     ) as T & Stream<R>;
   }
 
@@ -2154,7 +2154,7 @@ export class Stream<T> implements InternalListener<T> {
       throw new Error(
         'A MemoryStream was given to imitate(), but it only ' +
           'supports a Stream. Read more about this restriction here: ' +
-          'https://github.com/staltz/xstream#faq',
+          'https://github.com/staltz/xstream#faq'
       );
     }
     this._target = target;
