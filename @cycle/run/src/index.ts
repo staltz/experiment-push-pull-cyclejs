@@ -4,21 +4,27 @@ import {adapt} from './adapt';
 export class PushPullProxy<T> extends MemoryStream<T> implements Iterable<T> {
   constructor() {
     super(undefined as any);
+    const proxy = this;
     this.iterator = {
       next() {
-        return {done: false, value: undefined as any};
-      },
+        if (proxy.target) {
+          return proxy.target.next();
+        } else {
+          return {done: false, value: undefined as any};
+        }
+      }
     };
   }
 
   public [Symbol.iterator](): Iterator<T> {
-    return this.iterator;
+    return this.target || this.iterator;
   }
 
   private iterator: Iterator<T>;
+  private target: Iterator<T> | undefined;
 
   public imitateIterator(iterator: Iterator<T>): void {
-    this.iterator = iterator;
+    this.target = iterator;
   }
 }
 
@@ -95,7 +101,7 @@ function logToConsoleError(err: any) {
 }
 
 function makeSinkProxies<So extends Sources, Si extends Sinks>(
-  drivers: Drivers<So, Si>,
+  drivers: Drivers<So, Si>
 ): SinkProxies<Si> {
   const sinkProxies: SinkProxies<Si> = {} as SinkProxies<Si>;
   for (const name in drivers) {
@@ -108,7 +114,7 @@ function makeSinkProxies<So extends Sources, Si extends Sinks>(
 
 function callDrivers<So extends Sources, Si extends Sinks>(
   drivers: Drivers<So, Si>,
-  sinkProxies: SinkProxies<Si>,
+  sinkProxies: SinkProxies<Si>
 ): So {
   const sources: So = {} as So;
   for (const name in drivers) {
@@ -161,10 +167,10 @@ type ReplicationBuffers<Si extends Sinks> = {
 
 function replicateMany<So extends Sources, Si extends Sinks>(
   sinks: Si,
-  sinkProxies: SinkProxies<Si>,
+  sinkProxies: SinkProxies<Si>
 ): DisposeFunction {
   const sinkNames: Array<keyof Si> = Object.keys(sinks).filter(
-    name => !!sinkProxies[name],
+    name => !!sinkProxies[name]
   );
 
   let buffers: ReplicationBuffers<Si> = {} as ReplicationBuffers<Si>;
@@ -174,26 +180,26 @@ function replicateMany<So extends Sources, Si extends Sinks>(
     replicators[name] = {
       next: (x: any) => buffers[name]._n.push(x),
       error: (err: any) => buffers[name]._e.push(err),
-      complete: () => {},
+      complete: () => {}
     };
   });
 
   const streamSinkNames = sinkNames.filter(
-    name => sinks[name] && typeof sinks[name]['subscribe'] === 'function',
+    name => sinks[name] && typeof sinks[name]['subscribe'] === 'function'
   );
 
   const signalSinkNames = sinkNames.filter(
-    name => sinks[name] && typeof sinks[name]['init'] === 'function',
+    name => sinks[name] && typeof sinks[name]['init'] === 'function'
   );
 
   const subscriptions = streamSinkNames.map(name =>
-    xs.fromObservable(sinks[name] as any).subscribe(replicators[name]),
+    xs.fromObservable(sinks[name] as any).subscribe(replicators[name])
   );
 
   signalSinkNames.map(name =>
     sinkProxies[name].imitateIterator(
-      (sinks[name] as Iterable<any>)[Symbol.iterator](),
-    ),
+      (sinks[name] as Iterable<any>)[Symbol.iterator]()
+    )
   );
 
   streamSinkNames.forEach(name => {
@@ -272,23 +278,23 @@ function isObjectEmpty(obj: any): boolean {
  */
 export function setup<So extends Sources, Si extends FantasySinks<Si>>(
   main: (sources: So) => Si,
-  drivers: Drivers<So, Si>,
+  drivers: Drivers<So, Si>
 ): CycleProgram<So, Si> {
   if (typeof main !== `function`) {
     throw new Error(
-      `First argument given to Cycle must be the 'main' ` + `function.`,
+      `First argument given to Cycle must be the 'main' ` + `function.`
     );
   }
   if (typeof drivers !== `object` || drivers === null) {
     throw new Error(
       `Second argument given to Cycle must be an object ` +
-        `with driver functions as properties.`,
+        `with driver functions as properties.`
     );
   }
   if (isObjectEmpty(drivers)) {
     throw new Error(
       `Second argument given to Cycle must be an object ` +
-        `with at least one driver function declared as a property.`,
+        `with at least one driver function declared as a property.`
     );
   }
 
@@ -339,7 +345,7 @@ export function setup<So extends Sources, Si extends FantasySinks<Si>>(
  */
 export function run<So extends Sources, Si extends FantasySinks<Si>>(
   main: (sources: So) => Si,
-  drivers: Drivers<So, Si>,
+  drivers: Drivers<So, Si>
 ): DisposeFunction {
   // TODO this any below was added here with ysignal changes
   const {run, sinks} = setup(main as any, drivers as any);
