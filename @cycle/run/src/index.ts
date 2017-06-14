@@ -17,7 +17,10 @@ export class PushPullProxy<T> extends MemoryStream<T> implements Iterable<T> {
         }
       },
       get count(): number | undefined {
-        if (proxy.target && typeof (proxy.target as any).count === 'number') {
+        if (
+          proxy.target &&
+          ((proxy.target as any).count === 0 || !!(proxy.target as any).count)
+        ) {
           return (proxy.target as any).count;
         }
         return void 0;

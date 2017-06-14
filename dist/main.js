@@ -1493,7 +1493,8 @@ var PushPullProxy = (function (_super) {
                 }
             },
             get count() {
-                if (proxy.target && typeof proxy.target.count === 'number') {
+                if (proxy.target &&
+                    (proxy.target.count === 0 || !!proxy.target.count)) {
                     return proxy.target.count;
                 }
                 return void 0;
