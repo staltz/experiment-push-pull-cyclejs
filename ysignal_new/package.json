@@ -1,0 +1,12 @@
+{
+  "name": "ysignal",
+  "version": "1.0.0",
+  "main": "index.js",
+  "typings": "index.d.ts",
+  "scripts": {
+    "compile": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "2.1.5"
+  }
+}
