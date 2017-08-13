@@ -39,8 +39,16 @@ export interface Source<T> {
 }
 
 export class BaseSource<T> {
-    public map: <U>(fn: (t: T) => U) => Stream<U> = mapStream.bind(null, this);
-    public fold: <U>(fn: (acc: U, curr: T) => U, seed: U) => Stream<U> = foldStream.bind(null, this);
+    public compose<U>(fn: (s: BaseSource<T>) => Stream<U>): Stream<U> {
+        return fn(this);
+    }
+
+    public map<U>(fn: (t: T) => U): Stream<U> {
+        return this.compose(mapStream(fn));
+    }
+    public fold<U>(fn: (acc: U, curr: T) => U, seed: U): Stream<U> {
+        return this.compose(foldStream(fn, seed));
+    }
 }
 
 export class ArraySource<T> extends BaseSource<T> implements Source<T> {
@@ -64,14 +72,9 @@ export class Stream<T> extends BaseSource<T> implements Source<T> {
     }
 }
 
-export interface Helpers<T> {
-    map<U>(fn: (t: T) => U): Stream<U>;
-    fold<U>(fn: (acc: U, curr: T) => U, seed: U): Stream<U>;
-}
-
 //++++++++++++++++++ streamOperators ++++++++++++++++++++++++++++//
-export function mapStream<T, U>(stream: Stream<T>, fn: (t: T) => U): Stream<U> {
-    return new Stream(observer => {
+export function mapStream<T, U>(fn: (t: T) => U): (s: Stream<T>) => Stream<U> {
+    return stream => new Stream(observer => {
         stream.subscribe({
             next: t => observer.next(fn(t)),
             error: observer.error,
@@ -80,8 +83,8 @@ export function mapStream<T, U>(stream: Stream<T>, fn: (t: T) => U): Stream<U> {
     });
 }
 
-export function foldStream<T, U>(stream: Stream<T>, fn: (acc: U, curr: T) => U, seed: U): Stream<U> {
-    return new Stream(observer => {
+export function foldStream<T, U>(fn: (acc: U, curr: T) => U, seed: U): (s: Stream<T>) => Stream<U> {
+    return stream => new Stream(observer => {
         let accumulator = seed;
         stream.subscribe({
             next: t => {
