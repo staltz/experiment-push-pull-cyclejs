@@ -18,28 +18,31 @@ export declare class Signal<T> implements IterableIterator<T> {
     drop: (amount: number) => Signal<T>;
     compose<U>(transform: (s: Signal<T>) => Signal<U>): Signal<U>;
 }
-export interface Source<T> {
-    subscribe(o: Observer<T>): any;
-}
-export declare class BaseSource<T> {
-    map: <U>(fn: (t: T) => U) => Stream<U>;
-    fold: <U>(fn: (acc: U, curr: T) => U, seed: U) => Stream<U>;
-}
-export declare class ArraySource<T> extends BaseSource<T> implements Source<T> {
-    private array;
-    constructor(array: T[]);
-    subscribe(observer: Observer<T>): any;
-}
-export declare class Stream<T> extends BaseSource<T> implements Source<T> {
-    subscribe: (o: Observer<T>) => void;
-    constructor(subscribe: (o: Observer<T>) => void);
-}
-export interface Helpers<T> {
+export declare abstract class BaseSource<T> {
+    abstract subscribe(o: Observer<T>): void;
+    compose<U>(fn: (s: BaseSource<T>) => Stream<U>): Stream<U>;
     map<U>(fn: (t: T) => U): Stream<U>;
     fold<U>(fn: (acc: U, curr: T) => U, seed: U): Stream<U>;
+    sampleCombine(...signals: Signal<any>[]): Stream<any[]>;
 }
-export declare function mapStream<T, U>(stream: Stream<T>, fn: (t: T) => U): Stream<U>;
-export declare function foldStream<T, U>(stream: Stream<T>, fn: (acc: U, curr: T) => U, seed: U): Stream<U>;
+export declare class ArraySource<T> extends BaseSource<T> {
+    private array;
+    constructor(array: T[]);
+    subscribe(observer: Observer<T>): void;
+}
+export declare class PromiseSource<T> extends BaseSource<T> {
+    private promise;
+    constructor(promise: Promise<T>);
+    subscribe(observer: Observer<T>): void;
+}
+export declare class Stream<T> extends BaseSource<T> {
+    private _subscribe;
+    constructor(_subscribe: (o: Observer<T>) => void);
+    subscribe(o: Observer<T>): void;
+}
+export declare function mapStream<T, U>(fn: (t: T) => U): (s: Stream<T>) => Stream<U>;
+export declare function foldStream<T, U>(fn: (acc: U, curr: T) => U, seed: U): (s: Stream<T>) => Stream<U>;
+export declare function sampleCombine<T>(...signals: Signal<any>[]): (s: Stream<T>) => Stream<any[]>;
 export declare function createSignal<T>(iterator: Iterator<T>): Signal<T>;
 export declare function fromGetter<T>(getter: Getter<T>): Signal<T>;
 export declare function constant<T>(val: T): Signal<T>;

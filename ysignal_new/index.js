@@ -39,9 +39,26 @@ var Signal = (function () {
 exports.Signal = Signal;
 var BaseSource = (function () {
     function BaseSource() {
-        this.map = mapStream.bind(null, this);
-        this.fold = foldStream.bind(null, this);
     }
+    BaseSource.prototype[symbol_observable_1.default] = function () {
+        return this;
+    };
+    BaseSource.prototype.compose = function (fn) {
+        return fn(this);
+    };
+    BaseSource.prototype.map = function (fn) {
+        return this.compose(mapStream(fn));
+    };
+    BaseSource.prototype.fold = function (fn, seed) {
+        return this.compose(foldStream(fn, seed));
+    };
+    BaseSource.prototype.sampleCombine = function () {
+        var signals = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            signals[_i] = arguments[_i];
+        }
+        return this.compose(sampleCombine.apply(void 0, signals));
+    };
     return BaseSource;
 }());
 exports.BaseSource = BaseSource;
@@ -58,32 +75,47 @@ var ArraySource = (function (_super) {
     return ArraySource;
 }(BaseSource));
 exports.ArraySource = ArraySource;
-var Stream = (function (_super) {
-    __extends(Stream, _super);
-    function Stream(subscribe) {
+var PromiseSource = (function (_super) {
+    __extends(PromiseSource, _super);
+    function PromiseSource(promise) {
         var _this = _super.call(this) || this;
-        _this.subscribe = subscribe;
+        _this.promise = promise;
         return _this;
     }
-    Stream.prototype[symbol_observable_1.default] = function () {
-        return this;
+    PromiseSource.prototype.subscribe = function (observer) {
+        this.promise.then(function (t) {
+            observer.next(t);
+        });
+    };
+    return PromiseSource;
+}(BaseSource));
+exports.PromiseSource = PromiseSource;
+var Stream = (function (_super) {
+    __extends(Stream, _super);
+    function Stream(_subscribe) {
+        var _this = _super.call(this) || this;
+        _this._subscribe = _subscribe;
+        return _this;
+    }
+    Stream.prototype.subscribe = function (o) {
+        this._subscribe(o);
     };
     return Stream;
 }(BaseSource));
 exports.Stream = Stream;
 //++++++++++++++++++ streamOperators ++++++++++++++++++++++++++++//
-function mapStream(stream, fn) {
-    return new Stream(function (observer) {
+function mapStream(fn) {
+    return function (stream) { return new Stream(function (observer) {
         stream.subscribe({
             next: function (t) { return observer.next(fn(t)); },
             error: observer.error,
             complete: observer.complete
         });
-    });
+    }); };
 }
 exports.mapStream = mapStream;
-function foldStream(stream, fn, seed) {
-    return new Stream(function (observer) {
+function foldStream(fn, seed) {
+    return function (stream) { return new Stream(function (observer) {
         var accumulator = seed;
         stream.subscribe({
             next: function (t) {
@@ -93,9 +125,26 @@ function foldStream(stream, fn, seed) {
             error: observer.error,
             complete: observer.complete
         });
-    });
+    }); };
 }
 exports.foldStream = foldStream;
+function sampleCombine() {
+    var signals = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        signals[_i] = arguments[_i];
+    }
+    return function (stream) { return new Stream(function (observer) {
+        stream.subscribe({
+            next: function (t) {
+                var values = signals.map(function (s) { return s.next().value; });
+                observer.next([t].concat(values));
+            },
+            error: observer.error,
+            complete: observer.complete
+        });
+    }); };
+}
+exports.sampleCombine = sampleCombine;
 //++++++++++++ creators ++++++++++++++++++++++++++++++//
 function createSignal(iterator) {
     return new Signal(iterator);

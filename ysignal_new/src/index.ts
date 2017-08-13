@@ -34,11 +34,13 @@ export class Signal<T> implements IterableIterator<T> {
     }
 }
 
-export interface Source<T> {
-    subscribe(o: Observer<T>): any;
-}
+export abstract class BaseSource<T> {
+    abstract subscribe(o: Observer<T>): void;
 
-export class BaseSource<T> {
+    [$$observable](): BaseSource<T> {
+        return this;
+    }
+
     public compose<U>(fn: (s: BaseSource<T>) => Stream<U>): Stream<U> {
         return fn(this);
     }
@@ -49,26 +51,40 @@ export class BaseSource<T> {
     public fold<U>(fn: (acc: U, curr: T) => U, seed: U): Stream<U> {
         return this.compose(foldStream(fn, seed));
     }
+    public sampleCombine(...signals: Signal<any>[]): Stream<any[]> {
+        return this.compose(sampleCombine(...signals));
+    }
 }
 
-export class ArraySource<T> extends BaseSource<T> implements Source<T> {
+export class ArraySource<T> extends BaseSource<T> {
     constructor(private array: T[]) {
         super();
     }
 
-    public subscribe(observer: Observer<T>): any {
+    public subscribe(observer: Observer<T>): void {
         this.array.forEach(t => observer.next(t));
     }
 }
 
-export class Stream<T> extends BaseSource<T> implements Source<T> {
-
-    constructor(public subscribe: (o: Observer<T>) => void) {
+export class PromiseSource<T> extends BaseSource<T> {
+    constructor(private promise: Promise<T>) {
         super();
     }
 
-    [$$observable](): Stream<T> {
-        return this as any as Stream<T>;
+    public subscribe(observer: Observer<T>): void {
+        this.promise.then(t => {
+            observer.next(t);
+        });
+    }
+}
+
+export class Stream<T> extends BaseSource<T> {
+    constructor(private _subscribe: (o: Observer<T>) => void) {
+        super();
+    }
+
+    public subscribe(o: Observer<T>): void {
+        this._subscribe(o);
     }
 }
 
@@ -90,6 +106,19 @@ export function foldStream<T, U>(fn: (acc: U, curr: T) => U, seed: U): (s: Strea
             next: t => {
                 accumulator = fn(accumulator, t);
                 observer.next(accumulator);
+            },
+            error: observer.error,
+            complete: observer.complete
+        });
+    });
+}
+
+export function sampleCombine<T>(...signals: Signal<any>[]): (s: Stream<T>) => Stream<any[]> {
+    return stream => new Stream(observer => {
+        stream.subscribe({
+            next: t => {
+                const values = signals.map(s => s.next().value);
+                observer.next([t].concat(values));
             },
             error: observer.error,
             complete: observer.complete
