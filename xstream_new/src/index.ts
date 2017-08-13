@@ -29,6 +29,34 @@ export function fromPromise<T>(promise: Promise<T>): Stream<T> {
     });
 }
 
+export function merge(...streams: Stream<any>[]): Stream<any> {
+    return create<any>(observer => {
+        streams.forEach(s => {
+            s.subscribe(observer);
+        });
+    });
+}
+
+export function combine(...streams: Stream<any>[]): Stream<any[]> {
+    return create<any>(observer => {
+        let emitted = streams.map(() => false);
+        let lastValues = streams.map(() => undefined);
+        streams.forEach((s, i) => {
+            s.subscribe({
+                next: t => {
+                    emitted[i] = true;
+                    lastValues[i] = t;
+                    if(emitted.reduce((acc, curr) => acc && curr, true)) {
+                        observer.next(lastValues);
+                    }
+                },
+                error: observer.error,
+                complete: observer.complete
+            });
+        });
+    });
+}
+
 //+++++++++++++++++++++++ Stream transformers +++++++++++++++++++++++//
 export type Transformer<T, U> = (s: IStream<T>) => Stream<U>;
 
@@ -79,5 +107,7 @@ export class Stream<T> implements IStream<T> {
 export default {
     create,
     fromArray,
-    fromPromise
+    fromPromise,
+    merge,
+    combine
 };
