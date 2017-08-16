@@ -17,6 +17,10 @@ export function create<T>(subscribe: (o: Observer<T>) => IO): Stream<T> {
     return new Stream<T>(subscribe);
 }
 
+export function of<T>(...items: T[]): Stream<T> {
+    return fromArray<T>(items);
+}
+
 export function fromArray<T>(array: T[]): Stream<T> {
     return create<T>(observer => {
         array.forEach(a => observer.next(a));
@@ -298,6 +302,7 @@ export class Stream<T> implements IStream<T> {
 
 export default {
     create,
+    of,
     never,
     empty,
     fromArray,
