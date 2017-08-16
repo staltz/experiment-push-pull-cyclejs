@@ -1,6 +1,6 @@
 import $$observable from 'symbol-observable';
 
-export type IO = void;
+export type IO = any;
 
 export interface Observer<T> {
     next(t: T): IO;
@@ -20,19 +20,63 @@ export function create<T>(subscribe: (o: Observer<T>) => IO): Stream<T> {
 export function fromArray<T>(array: T[]): Stream<T> {
     return create<T>(observer => {
         array.forEach(a => observer.next(a));
+        observer.complete();
     });
 }
 
 export function fromPromise<T>(promise: Promise<T>): Stream<T> {
     return create<T>(observer => {
-        promise.then(val => observer.next(val));
+        promise.then(val => {
+            observer.next(val);
+            observer.complete();
+        });
+    });
+}
+
+export function fromObservable<T>(observable: IStream<T>): Stream<T> {
+    return create<T>(observer => {
+        observable.subscribe(observer);
+    });
+}
+
+export function from<T>(input: T[] | Promise<T> | IStream<T>): Stream<T> {
+    if (typeof input[$$observable] === 'function') {
+        return fromObservable<T>(input as IStream<T>);
+    } else if (typeof (input as Promise<T>).then === 'function') {
+        return fromPromise<T>(input as Promise<T>);
+    } else if (Array.isArray(input)) {
+        return fromArray<T>(input);
+    }
+
+    throw new TypeError(
+      `Type of input to from() must be an Array, Promise, or Observable`
+    );
+}
+
+export function never<T>(): Stream<T> {
+    return create<T>(() => {});
+}
+
+export function empty<T>(): Stream<T> {
+    return create<T>(observer => {
+        observer.complete();
     });
 }
 
 export function merge(...streams: Stream<any>[]): Stream<any> {
     return create<any>(observer => {
+        let numComplete = 0;
         streams.forEach(s => {
-            s.subscribe(observer);
+            s.subscribe({
+                next: observer.next,
+                error: observer.error,
+                complete: () => {
+                    numComplete++;
+                    if(numComplete === streams.length) {
+                        observer.complete();
+                    }
+                }
+            });
         });
     });
 }
@@ -41,6 +85,7 @@ export function combine(...streams: Stream<any>[]): Stream<any[]> {
     return create<any>(observer => {
         let emitted = streams.map(() => false);
         let lastValues = streams.map(() => undefined);
+        let numComplete = 0;
         streams.forEach((s, i) => {
             s.subscribe({
                 next: t => {
@@ -51,7 +96,12 @@ export function combine(...streams: Stream<any>[]): Stream<any[]> {
                     }
                 },
                 error: observer.error,
-                complete: observer.complete
+                complete: () => {
+                    numComplete++;
+                    if(numComplete === streams.length) {
+                        observer.complete();
+                    }
+                }
             });
         });
     });
@@ -85,7 +135,7 @@ export function foldStream<T, U>(fn: (acc: U, curr: T) => U, seed: U): Transform
 }
 
 //+++++ Implementation of basic interfaces with helper functions ++++//
-export class Stream<T> implements IStream<T> {
+export class Stream<T> implements IStream<T>, Observable {
     constructor(public subscribe: (o: Observer<T>) => IO) {}
 
     [$$observable](): Stream<T> {
