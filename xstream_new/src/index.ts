@@ -120,7 +120,11 @@ export function map<T, U>(fn: (t: T) => U) : Transformer<T, U> {
     });
 }
 
-export function foldStream<T, U>(fn: (acc: U, curr: T) => U, seed: U): Transformer<T, U> {
+export function mapTo<T>(value: T): Transformer<any, T> {
+    return map<any, T>(() => value);
+}
+
+export function fold<T, U>(fn: (acc: U, curr: T) => U, seed: U): Transformer<T, U> {
     return stream => create<U>(observer => {
         let accumulator = seed;
         stream.subscribe({
@@ -134,8 +138,125 @@ export function foldStream<T, U>(fn: (acc: U, curr: T) => U, seed: U): Transform
     });
 }
 
+export function filter<T>(predicate: (t: T) => boolean): Transformer<T, T> {
+    return stream => create<T>(observer => {
+        stream.subscribe({
+            next: t => {
+                if(predicate(t)) {
+                    observer.next(t);
+                }
+            },
+            error: observer.error,
+            complete: observer.complete
+        });
+    });
+}
+
+export function take<T>(amount: number): Transformer<T, T> {
+    return stream => create<T>(observer => {
+        let numPassed = 0;
+        stream.subscribe({
+            next: t => {
+                if(numPassed < amount) {
+                    numPassed++;
+                    observer.next(t);
+                }
+                if(numPassed === amount) {
+                    numPassed++;
+                    observer.complete();
+                }
+            },
+            error: observer.error,
+            complete: () => {
+                if(numPassed < amount) {
+                    observer.complete();
+                }
+            }
+        });
+    });
+}
+
+export function drop<T>(amount: number): Transformer<T, T> {
+    return stream => create<T>(observer => {
+        let numDropped = 0;
+        stream.subscribe({
+            next: t => {
+                if(numDropped < amount) {
+                    numDropped++;
+                } else {
+                    observer.next(t);
+                }
+            },
+            error: observer.error,
+            complete: observer.complete
+        });
+    });
+}
+
+export function last<T>(): Transformer<T, T | undefined> {
+    return stream => create<T | undefined>(observer => {
+        let lastValue: T | undefined = undefined;
+        stream.subscribe({
+            next: t => {
+                lastValue = t;
+            },
+            error: observer.error,
+            complete: () => {
+                observer.next(lastValue);
+                observer.complete();
+            }
+        });
+    });
+}
+
+export function endWhen<T>(end: IStream<any>): Transformer<T, T> {
+    return stream => create<T>(observer => {
+        let completed = false;
+        stream.subscribe({
+            next: t => {
+                if(!completed) {
+                    observer.next(t);
+                }
+            },
+            error: observer.error,
+            complete: () => {
+                if(!completed) {
+                    completed = true;
+                    observer.complete();
+                }
+            }
+        });
+        end.subscribe({
+            next: () => {
+                completed = true;
+                observer.complete();
+            },
+            error: () => {},
+            complete: () => {}
+        });
+    });
+}
+
+export function flatten<T>(): Transformer<IStream<T>, T> {
+    return stream$ => create<T>(observer => {
+        let currentStream = undefined;
+        stream$.subscribe({
+            next: t => {
+                currentStream = t;
+                currentStream.subscribe({
+                    next: observer.next,
+                    error: observer.error,
+                    complete: () => {}
+                });
+            },
+            error: observer.error,
+            complete: observer.complete
+        });
+    });
+}
+
 //+++++ Implementation of basic interfaces with helper functions ++++//
-export class Stream<T> implements IStream<T>, Observable {
+export class Stream<T> implements IStream<T> {
     constructor(public subscribe: (o: Observer<T>) => IO) {}
 
     [$$observable](): Stream<T> {
@@ -147,17 +268,42 @@ export class Stream<T> implements IStream<T>, Observable {
     }
 
     public map<U>(fn: (t: T) => U): Stream<U> {
-        return this.compose(map(fn));
+        return this.compose(map<T, U>(fn));
+    }
+    public mapTo<U>(value: U): Stream<U> {
+        return this.compose(mapTo<U>(value));
     }
     public fold<U>(fn: (acc: U, curr: T) => U, seed: U): Stream<U> {
-        return this.compose(foldStream(fn, seed));
+        return this.compose(fold<T, U>(fn, seed));
+    }
+    public filter(predicate: (t: T) => boolean): Stream<T> {
+        return this.compose(filter<T>(predicate));
+    }
+    public take(amount: number): Stream<T> {
+        return this.compose(take<T>(amount));
+    }
+    public drop(amount: number): Stream<T> {
+        return this.compose(drop<T>(amount));
+    }
+    public last(): Stream<T | undefined> {
+        return this.compose(last<T>());
+    }
+    public endWhen(end: IStream<any>): Stream<T> {
+        return this.compose(endWhen<T>(end));
+    }
+    public flatten<U>(): Stream<U> {
+        return this.compose(flatten<U>() as any);
     }
 }
 
 export default {
     create,
+    never,
+    empty,
     fromArray,
     fromPromise,
+    fromObservable,
+    from,
     merge,
     combine
 };
