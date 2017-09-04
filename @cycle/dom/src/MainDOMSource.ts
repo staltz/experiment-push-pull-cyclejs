@@ -1,5 +1,5 @@
 import {Stream, Listener} from 'xstream';
-import dropRepeats from 'xstream/extra/dropRepeats';
+import dropRepeats from './dropRepeats';
 import {Signal} from 'ysignal';
 import {DevToolEnabledSource} from '@cycle/run';
 import {adapt} from '@cycle/run/lib/adapt';

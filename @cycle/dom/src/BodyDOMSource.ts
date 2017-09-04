@@ -1,5 +1,5 @@
 import xs, {Stream, MemoryStream} from 'xstream';
-import {Signal} from 'ysignal';
+import ys, {Signal} from 'ysignal';
 import {adapt} from '@cycle/run/lib/adapt';
 import {DevToolEnabledSource} from '@cycle/run';
 import {DOMSource, EventsFnOptions} from './DOMSource';
@@ -14,7 +14,7 @@ export class BodyDOMSource implements DOMSource {
   }
 
   public elements(): Signal<HTMLBodyElement> {
-    const out = Signal.constant(document.body) as DevToolEnabledSource &
+    const out = ys.constant(document.body) as DevToolEnabledSource &
       Signal<HTMLBodyElement>;
     out._isCycleSource = this._name;
     return out;

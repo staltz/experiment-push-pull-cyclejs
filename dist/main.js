@@ -13,23 +13,21 @@ function main(sources) {
             count: prevState.count + 1
         };
     });
-    var initialReducer$ = xstream_1.Stream.of(function initialReducer() {
+    var initialReducer$ = xstream_1.default.of(function initialReducer(_) {
         return { count: 0 };
     });
-    var reducer$ = xstream_1.Stream.merge(initialReducer$, incrementReducer$);
-    // const vdomS = Signal.combine(
-    //   sources.state.stateS,
-    //   sources.windowHeight
-    // ).map(([state, height]) =>
-    //   div('.container', [
-    //     div('.height', 'Height: ' + height),
-    //     button('.foo', 'Count: ' + state.count),
-    //     div('.not', 'Not this')
-    //   ])
-    // );
-    var vdomS = sources.state.stateS.map(function (state) {
-        return dom_1.div('.container', [dom_1.button('.foo', 'Count: ' + state.count), dom_1.div('.not', 'Not this')]);
+    var reducer$ = xstream_1.default.merge(initialReducer$, incrementReducer$).debug('test');
+    var vdomS = ysignal_1.default.combine(sources.state.stateS, sources.windowHeight).map(function (_a) {
+        var state = _a[0],
+            height = _a[1];
+        return dom_1.div('.container', [dom_1.div('.height', 'Height: ' + height), dom_1.button('.foo', 'Count: ' + state.count), dom_1.div('.not', 'Not this')]);
     });
+    /*  const vdomS = sources.state.stateS.map(state =>
+        div('.container', [
+          button('.foo', 'Count: ' + state.count),
+          div('.not', 'Not this')
+        ])
+      );*/
     return {
         DOM: vdomS,
         state: reducer$
@@ -37,7 +35,7 @@ function main(sources) {
 }
 run_1.run(cycle_onionify_1.default(main, 'state'), {
     windowHeight: function () {
-        return ysignal_1.Signal.from(function () {
+        return ysignal_1.default.from(function () {
             return window.outerHeight;
         });
     },
@@ -45,7 +43,7 @@ run_1.run(cycle_onionify_1.default(main, 'state'), {
 });
 
 
-},{"@cycle/dom":13,"@cycle/run":20,"cycle-onionify":23,"xstream":44,"ysignal":45}],2:[function(require,module,exports){
+},{"@cycle/dom":14,"@cycle/run":44,"cycle-onionify":51,"xstream":61,"ysignal":65}],2:[function(require,module,exports){
 "use strict";
 var ysignal_1 = require("ysignal");
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -59,7 +57,7 @@ var BodyDOMSource = (function () {
         return this;
     };
     BodyDOMSource.prototype.elements = function () {
-        var out = ysignal_1.Signal.constant(document.body);
+        var out = ysignal_1.default.constant(document.body);
         out._isCycleSource = this._name;
         return out;
     };
@@ -74,7 +72,7 @@ var BodyDOMSource = (function () {
 }());
 exports.BodyDOMSource = BodyDOMSource;
 
-},{"./fromEvent":10,"@cycle/run/lib/adapt":19,"ysignal":45}],3:[function(require,module,exports){
+},{"./fromEvent":11,"@cycle/run/lib/adapt":20,"ysignal":65}],3:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var adapt_1 = require("@cycle/run/lib/adapt");
@@ -103,7 +101,7 @@ var DocumentDOMSource = (function () {
 }());
 exports.DocumentDOMSource = DocumentDOMSource;
 
-},{"./fromEvent":10,"@cycle/run/lib/adapt":19,"xstream":44}],4:[function(require,module,exports){
+},{"./fromEvent":11,"@cycle/run/lib/adapt":20,"xstream":39}],4:[function(require,module,exports){
 "use strict";
 var ScopeChecker_1 = require("./ScopeChecker");
 var utils_1 = require("./utils");
@@ -136,7 +134,7 @@ var ElementFinder = (function () {
 }());
 exports.ElementFinder = ElementFinder;
 
-},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":18}],5:[function(require,module,exports){
+},{"./ScopeChecker":8,"./matchesSelector":17,"./utils":19}],5:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 var ScopeChecker_1 = require("./ScopeChecker");
@@ -315,7 +313,7 @@ var EventDelegator = (function () {
 }());
 exports.EventDelegator = EventDelegator;
 
-},{"./ScopeChecker":8,"./matchesSelector":16,"./utils":18,"xstream":44}],6:[function(require,module,exports){
+},{"./ScopeChecker":8,"./matchesSelector":17,"./utils":19,"xstream":39}],6:[function(require,module,exports){
 "use strict";
 // const MapPolyfill: typeof Map = require('es6-map');
 var IsolateModule = (function () {
@@ -430,7 +428,7 @@ exports.IsolateModule = IsolateModule;
 },{}],7:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
-var dropRepeats_1 = require("xstream/extra/dropRepeats");
+var dropRepeats_1 = require("./dropRepeats");
 var adapt_1 = require("@cycle/run/lib/adapt");
 var DocumentDOMSource_1 = require("./DocumentDOMSource");
 var BodyDOMSource_1 = require("./BodyDOMSource");
@@ -641,7 +639,7 @@ var MainDOMSource = (function () {
 }());
 exports.MainDOMSource = MainDOMSource;
 
-},{"./BodyDOMSource":2,"./DocumentDOMSource":3,"./ElementFinder":4,"./EventDelegator":5,"./fromEvent":10,"./isolate":14,"./utils":18,"@cycle/run/lib/adapt":19,"xstream":44,"xstream/extra/dropRepeats":43}],8:[function(require,module,exports){
+},{"./BodyDOMSource":2,"./DocumentDOMSource":3,"./ElementFinder":4,"./EventDelegator":5,"./dropRepeats":10,"./fromEvent":11,"./isolate":15,"./utils":19,"@cycle/run/lib/adapt":20,"xstream":39}],8:[function(require,module,exports){
 "use strict";
 var ScopeChecker = (function () {
     function ScopeChecker(fullScope, isolateModule) {
@@ -707,7 +705,130 @@ var VNodeWrapper = (function () {
 }());
 exports.VNodeWrapper = VNodeWrapper;
 
-},{"./hyperscript":12,"snabbdom-selector/lib/commonjs/classNameFromVNode":27,"snabbdom-selector/lib/commonjs/selectorParser":28}],10:[function(require,module,exports){
+},{"./hyperscript":13,"snabbdom-selector/lib/commonjs/classNameFromVNode":26,"snabbdom-selector/lib/commonjs/selectorParser":27}],10:[function(require,module,exports){
+"use strict";
+var xstream_1 = require("xstream");
+var empty = {};
+var DropRepeatsOperator = (function () {
+    function DropRepeatsOperator(ins, fn) {
+        this.ins = ins;
+        this.fn = fn;
+        this.type = 'dropRepeats';
+        this.out = null;
+        this.v = empty;
+    }
+    DropRepeatsOperator.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    DropRepeatsOperator.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = null;
+        this.v = empty;
+    };
+    DropRepeatsOperator.prototype.isEq = function (x, y) {
+        return this.fn ? this.fn(x, y) : x === y;
+    };
+    DropRepeatsOperator.prototype._n = function (t) {
+        var u = this.out;
+        if (!u)
+            return;
+        var v = this.v;
+        if (v !== empty && this.isEq(t, v))
+            return;
+        this.v = t;
+        u._n(t);
+    };
+    DropRepeatsOperator.prototype._e = function (err) {
+        var u = this.out;
+        if (!u)
+            return;
+        u._e(err);
+    };
+    DropRepeatsOperator.prototype._c = function () {
+        var u = this.out;
+        if (!u)
+            return;
+        u._c();
+    };
+    return DropRepeatsOperator;
+}());
+exports.DropRepeatsOperator = DropRepeatsOperator;
+/**
+ * Drops consecutive duplicate values in a stream.
+ *
+ * Marble diagram:
+ *
+ * ```text
+ * --1--2--1--1--1--2--3--4--3--3|
+ *     dropRepeats
+ * --1--2--1--------2--3--4--3---|
+ * ```
+ *
+ * Example:
+ *
+ * ```js
+ * import dropRepeats from 'xstream/extra/dropRepeats'
+ *
+ * const stream = xs.of(1, 2, 1, 1, 1, 2, 3, 4, 3, 3)
+ *   .compose(dropRepeats())
+ *
+ * stream.addListener({
+ *   next: i => console.log(i),
+ *   error: err => console.error(err),
+ *   complete: () => console.log('completed')
+ * })
+ * ```
+ *
+ * ```text
+ * > 1
+ * > 2
+ * > 1
+ * > 2
+ * > 3
+ * > 4
+ * > 3
+ * > completed
+ * ```
+ *
+ * Example with a custom isEqual function:
+ *
+ * ```js
+ * import dropRepeats from 'xstream/extra/dropRepeats'
+ *
+ * const stream = xs.of('a', 'b', 'a', 'A', 'B', 'b')
+ *   .compose(dropRepeats((x, y) => x.toLowerCase() === y.toLowerCase()))
+ *
+ * stream.addListener({
+ *   next: i => console.log(i),
+ *   error: err => console.error(err),
+ *   complete: () => console.log('completed')
+ * })
+ * ```
+ *
+ * ```text
+ * > a
+ * > b
+ * > a
+ * > B
+ * > completed
+ * ```
+ *
+ * @param {Function} isEqual An optional function of type
+ * `(x: T, y: T) => boolean` that takes an event from the input stream and
+ * checks if it is equal to previous event, by returning a boolean.
+ * @return {Stream}
+ */
+function dropRepeats(isEqual) {
+    if (isEqual === void 0) { isEqual = void 0; }
+    return function dropRepeatsOperator(ins) {
+        return new xstream_1.Stream(new DropRepeatsOperator(ins, isEqual));
+    };
+}
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = dropRepeats;
+
+},{"xstream":39}],11:[function(require,module,exports){
 "use strict";
 var xstream_1 = require("xstream");
 function fromEvent(element, eventName, useCapture, preventDefault) {
@@ -737,7 +858,7 @@ function fromEvent(element, eventName, useCapture, preventDefault) {
 }
 exports.fromEvent = fromEvent;
 
-},{"xstream":44}],11:[function(require,module,exports){
+},{"xstream":39}],12:[function(require,module,exports){
 "use strict";
 var hyperscript_1 = require("./hyperscript");
 function isValidString(param) {
@@ -970,7 +1091,7 @@ TAG_NAMES.forEach(function (n) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exported;
 
-},{"./hyperscript":12}],12:[function(require,module,exports){
+},{"./hyperscript":13}],13:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("snabbdom/vnode");
 var is = require("snabbdom/is");
@@ -1028,7 +1149,7 @@ function h(sel, b, c) {
 }
 exports.h = h;
 
-},{"snabbdom/is":31,"snabbdom/vnode":39}],13:[function(require,module,exports){
+},{"snabbdom/is":30,"snabbdom/vnode":38}],14:[function(require,module,exports){
 "use strict";
 var thunk_1 = require("snabbdom/thunk");
 exports.thunk = thunk_1.thunk;
@@ -1223,7 +1344,7 @@ exports.u = hyperscript_helpers_1.default.u;
 exports.ul = hyperscript_helpers_1.default.ul;
 exports.video = hyperscript_helpers_1.default.video;
 
-},{"./MainDOMSource":7,"./hyperscript":12,"./hyperscript-helpers":11,"./makeDOMDriver":15,"snabbdom/thunk":38}],14:[function(require,module,exports){
+},{"./MainDOMSource":7,"./hyperscript":13,"./hyperscript-helpers":12,"./makeDOMDriver":16,"snabbdom/thunk":37}],15:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("snabbdom/vnode");
 var utils_1 = require("./utils");
@@ -1281,7 +1402,7 @@ function totalIsolateSink(sink, fullScope) {
 }
 exports.totalIsolateSink = totalIsolateSink;
 
-},{"./utils":18,"snabbdom/vnode":39}],15:[function(require,module,exports){
+},{"./utils":19,"snabbdom/vnode":38}],16:[function(require,module,exports){
 "use strict";
 var run_1 = require("@cycle/run");
 var snabbdom_1 = require("snabbdom");
@@ -1321,14 +1442,14 @@ function makeDOMDriver(container, options) {
     makeDOMDriverInputGuard(modules);
     function DOMDriver(vnodeProxy, name) {
         if (name === void 0) { name = 'DOM'; }
-        var vnodeS = ysignal_1.Signal.create(vnodeProxy);
+        var vnodeS = ysignal_1.default.create(vnodeProxy);
         domDriverInputGuard(vnodeS);
         var rootElementS = vnodeS
             .map(function (vnode) { return vnodeWrapper.call(vnode); })
             .fold(patch, rootElement)
             .drop(1)
             .map(unwrapElementFromVNode)
-            .startWith(rootElement);
+            .fold(function (x) { return x; }, rootElement);
         var rootElementProxyS = new run_1.PushPullProxy();
         var iter = rootElementProxyS[Symbol.iterator]();
         // Start the snabbdom patching, over time
@@ -1357,7 +1478,7 @@ function makeDOMDriver(container, options) {
 }
 exports.makeDOMDriver = makeDOMDriver;
 
-},{"./IsolateModule":6,"./MainDOMSource":7,"./VNodeWrapper":9,"./modules":17,"./utils":18,"@cycle/run":20,"snabbdom":37,"ysignal":45}],16:[function(require,module,exports){
+},{"./IsolateModule":6,"./MainDOMSource":7,"./VNodeWrapper":9,"./modules":18,"./utils":19,"@cycle/run":21,"snabbdom":36,"ysignal":65}],17:[function(require,module,exports){
 "use strict";
 function createMatchesSelector() {
     var vendor;
@@ -1389,7 +1510,7 @@ function createMatchesSelector() {
 }
 exports.matchesSelector = createMatchesSelector();
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 var class_1 = require("snabbdom/modules/class");
 exports.ClassModule = class_1.default;
@@ -1411,7 +1532,7 @@ var modules = [
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = modules;
 
-},{"snabbdom/modules/attributes":32,"snabbdom/modules/class":33,"snabbdom/modules/dataset":34,"snabbdom/modules/props":35,"snabbdom/modules/style":36}],18:[function(require,module,exports){
+},{"snabbdom/modules/attributes":31,"snabbdom/modules/class":32,"snabbdom/modules/dataset":33,"snabbdom/modules/props":34,"snabbdom/modules/style":35}],19:[function(require,module,exports){
 "use strict";
 function isElement(obj) {
     return typeof HTMLElement === "object"
@@ -1457,7 +1578,7 @@ function getSelectors(namespace) {
 }
 exports.getSelectors = getSelectors;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 var adaptStream = function (x) { return x; };
 function setAdapt(f) {
@@ -1469,7 +1590,7 @@ function adapt(stream) {
 }
 exports.adapt = adapt;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -1710,668 +1831,1821 @@ exports.run = run;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = run;
 
-},{"./adapt":19,"xstream":44}],21:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var adapt_1 = require("@cycle/run/lib/adapt");
-var pickMerge_1 = require("./pickMerge");
-var pickCombine_1 = require("./pickCombine");
-var CollectionSource = (function () {
-    function CollectionSource(_ins$) {
-        this._ins$ = _ins$;
-    }
-    /**
-     * Like `merge` in xstream, this operator blends multiple streams together, but
-     * picks those streams from a collection of component instances.
-     *
-     * Use the `selector` string to pick a stream from the sinks object of each
-     * component instance, then pickMerge will merge all those picked streams.
-     *
-     * @param {String} selector a name of a channel in a sinks object belonging to
-     * each component in the collection of components.
-     * @return {Function} an operator to be used with xstream's `compose` method.
-     */
-    CollectionSource.prototype.pickMerge = function (selector) {
-        return adapt_1.adapt(this._ins$.compose(pickMerge_1.pickMerge(selector)));
-    };
-    /**
-     * Like `combine` in xstream, this operator combines multiple streams together,
-     * but picks those streams from a collection of component instances.
-     *
-     * Use the `selector` string to pick a stream from the sinks object of each
-     * component instance, then pickCombine will combine all those picked streams.
-     *
-     * @param {String} selector a name of a channel in a sinks object belonging to
-     * each component in the collection of components.
-     * @return {Function} an operator to be used with xstream's `compose` method.
-     */
-    CollectionSource.prototype.pickCombine = function (selector) {
-        return adapt_1.adapt(this._ins$.compose(pickCombine_1.pickCombine(selector)));
-    };
-    return CollectionSource;
-}());
-exports.CollectionSource = CollectionSource;
+},{"./adapt":20,"xstream":25}],22:[function(require,module,exports){
+module.exports = require('./lib/index');
 
-},{"./pickCombine":25,"./pickMerge":26,"@cycle/run/lib/adapt":19}],22:[function(require,module,exports){
-"use strict";
-var __assign = (this && this.__assign) || Object.assign || function(t) {
-    for (var s, i = 1, n = arguments.length; i < n; i++) {
-        s = arguments[i];
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-            t[p] = s[p];
-    }
-    return t;
+},{"./lib/index":23}],23:[function(require,module,exports){
+(function (global){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _ponyfill = require('./ponyfill');
+
+var _ponyfill2 = _interopRequireDefault(_ponyfill);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var root; /* global window */
+
+
+if (typeof self !== 'undefined') {
+  root = self;
+} else if (typeof window !== 'undefined') {
+  root = window;
+} else if (typeof global !== 'undefined') {
+  root = global;
+} else if (typeof module !== 'undefined') {
+  root = module;
+} else {
+  root = Function('return this')();
+}
+
+var result = (0, _ponyfill2['default'])(root);
+exports['default'] = result;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./ponyfill":24}],24:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports['default'] = symbolObservablePonyfill;
+function symbolObservablePonyfill(root) {
+	var result;
+	var _Symbol = root.Symbol;
+
+	if (typeof _Symbol === 'function') {
+		if (_Symbol.observable) {
+			result = _Symbol.observable;
+		} else {
+			result = _Symbol('observable');
+			_Symbol.observable = result;
+		}
+	} else {
+		result = '@@observable';
+	}
+
+	return result;
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-function updateArrayEntry(array, scope, newVal) {
-    if (newVal === array[scope]) {
-        return array;
-    }
-    var index = parseInt(scope);
-    if (typeof newVal === 'undefined') {
-        return array.filter(function (val, i) { return i !== index; });
-    }
-    return array.map(function (val, i) { return (i === index ? newVal : val); });
-}
-function makeGetter(scope) {
-    if (typeof scope === 'string' || typeof scope === 'number') {
-        return function lensGet(state) {
-            if (typeof state === 'undefined') {
-                return void 0;
-            }
-            else {
-                return state[scope];
-            }
-        };
-    }
-    else {
-        return scope.get;
-    }
-}
-function makeSetter(scope) {
-    if (typeof scope === 'string' || typeof scope === 'number') {
-        return function lensSet(state, childState) {
-            if (Array.isArray(state)) {
-                return updateArrayEntry(state, scope, childState);
-            }
-            else if (typeof state === 'undefined') {
-                return _a = {}, _a[scope] = childState, _a;
-            }
-            else {
-                return __assign({}, state, (_b = {}, _b[scope] = childState, _b));
-            }
-            var _a, _b;
-        };
-    }
-    else {
-        return scope.set;
-    }
-}
-function isolateSource(source, scope) {
-    return source.select(scope);
-}
-exports.isolateSource = isolateSource;
-function isolateSink(innerReducer$, scope) {
-    var get = makeGetter(scope);
-    var set = makeSetter(scope);
-    return innerReducer$.map(function (innerReducer) {
-        return function outerReducer(outer) {
-            var prevInner = get(outer);
-            var nextInner = innerReducer(prevInner);
-            if (prevInner === nextInner) {
-                return outer;
-            }
-            else {
-                return set(outer, nextInner);
-            }
-        };
-    });
-}
-exports.isolateSink = isolateSink;
-function defaultGetKey(statePiece) {
-    return statePiece.key;
-}
-var identityLens = {
-    get: function (outer) { return outer; },
-    set: function (outer, inner) { return inner; },
+},{}],25:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-function instanceLens(getKey, key) {
-    return {
-        get: function (arr) {
-            if (typeof arr === 'undefined') {
-                return void 0;
-            }
-            else {
-                for (var i = 0, n = arr.length; i < n; ++i) {
-                    if (getKey(arr[i]) === key) {
-                        return arr[i];
-                    }
-                }
-                return void 0;
-            }
-        },
-        set: function (arr, item) {
-            if (typeof arr === 'undefined') {
-                return [item];
-            }
-            else if (typeof item === 'undefined') {
-                return arr.filter(function (s) { return getKey(s) !== key; });
-            }
-            else {
-                return arr.map(function (s) {
-                    if (getKey(s) === key) {
-                        return item;
-                    }
-                    else {
-                        return s;
-                    }
-                });
-            }
-        },
+var symbol_observable_1 = require("symbol-observable");
+var NO = {};
+exports.NO = NO;
+function noop() { }
+function cp(a) {
+    var l = a.length;
+    var b = Array(l);
+    for (var i = 0; i < l; ++i)
+        b[i] = a[i];
+    return b;
+}
+function and(f1, f2) {
+    return function andFn(t) {
+        return f1(t) && f2(t);
     };
 }
-var StateSource = (function () {
-    function StateSource(signal, name) {
-        /**
-         * Treats the state in this StateSource as a dynamic collection of many child
-         * components, returning a CollectionSource.
-         *
-         * Typically you use this function when the state$ emits arrays, and each
-         * entry in the array is an object holding the state for each child component.
-         * When the state array grows, the collection will automatically instantiate
-         * a new child component. Similarly, when the state array gets smaller, the
-         * collection will handle removal of the corresponding child component.
-         *
-         * This function returns a CollectionSource, which can be consumed with the
-         * operators `pickCombine` and `pickMerge` attached to it as methods.
-         *
-         * As arguments, you pass the child Cycle.js component function to use for
-         * each entry in the array, and the sources object to give to as input to each
-         * child component. Each entry in the array is expected to be an object with
-         * at least `key` as a property, which should uniquely identify that child. If
-         * these objects have a different unique identifier like `id`, you can tell
-         * that to `asCollection` in the third argument: a function that takes the
-         * child object state, and returns the unique identifier. By default, this
-         * third argument is the function `obj => obj.key`.
-         *
-         * @param {Function} itemComp a function that takes `sources` as input and
-         * returns `sinks`, representing the component to be used for each child in
-         * the collection.
-         * @param {Object} sources the object with sources to pass as input for each
-         * child component.
-         * @param getKey
-         * @return {CollectionSource}
-         */
-        // public asCollection<Si>(
-        //   itemComp: (so: any) => Si,
-        //   sources: any,
-        //   getKey: any = defaultGetKey,
-        // ): CollectionSource<Si> {
-        //   const arrayS = this.stateS;
-        //   const name = this._name;
-        //   const collectionS = arrayS.fold(
-        //     (acc: Instances<Si>, nextState: Array<any> | any) => {
-        //       const dict = acc.dict;
-        //       if (Array.isArray(nextState)) {
-        //         const nextInstArray = Array(nextState.length) as Array<
-        //           Si & {_key: string}
-        //         >;
-        //         const nextKeys = new Set<string>();
-        //         // add
-        //         for (let i = 0, n = nextState.length; i < n; ++i) {
-        //           const key = getKey(nextState[i]);
-        //           nextKeys.add(key);
-        //           if (dict.has(key)) {
-        //             nextInstArray[i] = dict.get(key) as any;
-        //           } else {
-        //             const scopes = {
-        //               '*': '$' + key,
-        //               [name]: instanceLens(getKey, key),
-        //             };
-        //             const sinks = isolate(itemComp, scopes)(sources);
-        //             dict.set(key, sinks);
-        //             nextInstArray[i] = sinks;
-        //           }
-        //           nextInstArray[i]._key = key;
-        //         }
-        //         // remove
-        //         dict.forEach((_, key) => {
-        //           if (!nextKeys.has(key)) {
-        //             dict.delete(key);
-        //           }
-        //         });
-        //         nextKeys.clear();
-        //         return {dict: dict, arr: nextInstArray};
-        //       } else {
-        //         dict.clear();
-        //         const key = getKey(nextState);
-        //         const scopes = {'*': '$' + key, [name]: identityLens};
-        //         const sinks = isolate(itemComp, scopes)(sources);
-        //         dict.set(key, sinks);
-        //         return {dict: dict, arr: [sinks]};
-        //       }
-        //     },
-        //     {dict: new Map(), arr: []} as Instances<Si>,
-        //   );
-        //   return new CollectionSource<Si>(collectionS);
-        // }
-        this.isolateSource = isolateSource;
-        this.isolateSink = isolateSink;
-        this.stateS = signal;
-        // .filter(s => typeof s !== 'undefined');
-        // .compose(dropRepeats())
-        // .remember();
-        this._name = name;
-        this.stateS._isCycleSource = name;
+function _try(c, t, u) {
+    try {
+        return c.f(t);
     }
-    /**
-     * Selects a part (or scope) of the state object and returns a new StateSource
-     * dynamically representing that selected part of the state.
-     *
-     * @param {string|number|lens} scope as a string, this argument represents the
-     * property you want to select from the state object. As a number, this
-     * represents the array index you want to select from the state array. As a
-     * lens object (an object with get() and set()), this argument represents any
-     * custom way of selecting something from the state object.
-     */
-    StateSource.prototype.select = function (scope) {
-        var get = makeGetter(scope);
-        return new StateSource(this.stateS.map(get), this._name);
-    };
-    return StateSource;
-}());
-exports.StateSource = StateSource;
-
-},{}],23:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var onionify_1 = require("./onionify");
-var StateSource_1 = require("./StateSource");
-exports.StateSource = StateSource_1.StateSource;
-exports.isolateSource = StateSource_1.isolateSource;
-exports.isolateSink = StateSource_1.isolateSink;
-var CollectionSource_1 = require("./CollectionSource");
-exports.CollectionSource = CollectionSource_1.CollectionSource;
-/**
- * Like `merge` in xstream, this operator blends multiple streams together, but
- * picks those streams from a stream of instances.
- *
- * The instances data structure has a sinks object for each instance. Use the
- * `selector` string to pick a stream from the sinks object of each instance,
- * then pickMerge will merge all those picked streams.
- *
- * @param {String} selector a name of a channel in a sinks object belonging to
- * each component in the collection of instances.
- * @return {Function} an operator to be used with xstream's `compose` method.
- */
-var pickMerge_1 = require("./pickMerge");
-exports.pickMerge = pickMerge_1.pickMerge;
-/**
- * Like `combine` in xstream, this operator combines multiple streams together,
- * but picks those streams from a stream of instances.
- *
- * The instances data structure has a sinks object for each instance. Use the
- * `selector` string to pick a stream from the sinks object of each instance,
- * then pickCombine will combine all those picked streams.
- *
- * @param {String} selector a name of a channel in a sinks object belonging to
- * each component in the collection of instances.
- * @return {Function} an operator to be used with xstream's `compose` method.
- */
-var pickCombine_1 = require("./pickCombine");
-exports.pickCombine = pickCombine_1.pickCombine;
-/**
- * Given a Cycle.js component that expects an onion state *source* and will
- * output onion reducer *sink*, this function sets up the state management
- * mechanics to accumulate state over time and provide the state source. It
- * returns a Cycle.js component which wraps the component given as input.
- * Essentially, it hooks up the onion sink with the onion source as a cycle.
- *
- * Optionally, you can pass a custom name for the onion channel. By default,
- * the name is 'onion' in sources and sinks, but you can change that to be
- * whatever string you wish.
- *
- * @param {Function} main a function that takes `sources` as input and outputs
- * `sinks`.
- * @param {String} name an optional string for the custom name given to the
- * onion channel. By default, it is 'onion'.
- * @return {Function} a component that wraps the main function given as input,
- * adding state accumulation logic to it.
- */
-exports.default = onionify_1.onionify;
-
-},{"./CollectionSource":21,"./StateSource":22,"./onionify":24,"./pickCombine":25,"./pickMerge":26}],24:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xstream_1 = require("xstream");
-var ysignal_1 = require("ysignal");
-var StateSource_1 = require("./StateSource");
-var FoldIterator = (function () {
-    function FoldIterator(seed, reducer$) {
-        this.seed = seed;
-        this.reducer$ = reducer$;
-        this.acc = seed;
-        this.done = false;
-        this.count = 0;
-        this.latestCount = -1;
-        var foldIterator = this;
-        this.subscription = reducer$.subscribe({
-            next: function (reducer) {
-                var next = reducer(foldIterator.acc);
-                if (typeof next !== 'undefined') {
-                    foldIterator.acc = next;
-                    foldIterator.count++;
-                }
-            },
-            error: function (e) { },
-            complete: function () {
-                foldIterator.done = true;
-                foldIterator.count++;
-            }
-        });
+    catch (e) {
+        u._e(e);
+        return NO;
     }
-    FoldIterator.prototype.next = function () {
-        if (this.latestCount >= 0 && this.latestCount === this.count) {
-            return this.latestRes;
-        }
-        else {
-            this.latestCount = this.count;
-            this.latestRes = {
-                done: this.done,
-                value: this.done ? undefined : this.acc
-            };
-            return this.latestRes;
-        }
-    };
-    FoldIterator.prototype.return = function () {
-        this.subscription.unsubscribe();
-        return { done: true, value: undefined };
-    };
-    return FoldIterator;
-}());
-function fold(seed, reducer$) {
-    return ysignal_1.Signal.create((_a = {},
-        _a[Symbol.iterator] = function () {
-            return new FoldIterator(seed, reducer$);
-        },
-        _a));
-    var _a;
 }
-function onionify(main, name) {
-    if (name === void 0) { name = 'onion'; }
-    return function mainOnionified(sources) {
-        var reducerMimic$ = xstream_1.default.create();
-        var stateS = fold(void 0, reducerMimic$);
-        // .fold((state, reducer) => reducer(state), void 0 as (T | undefined))
-        // .drop(1);
-        sources[name] = new StateSource_1.StateSource(stateS, name);
-        var sinks = main(sources);
-        if (sinks[name]) {
-            reducerMimic$.imitate(xstream_1.default.fromObservable(sinks[name]));
-        }
-        return sinks;
+var NO_IL = {
+    _n: noop,
+    _e: noop,
+    _c: noop,
+};
+exports.NO_IL = NO_IL;
+// mutates the input
+function internalizeProducer(producer) {
+    producer._start = function _start(il) {
+        il.next = il._n;
+        il.error = il._e;
+        il.complete = il._c;
+        this.start(il);
     };
+    producer._stop = producer.stop;
 }
-exports.onionify = onionify;
-
-},{"./StateSource":22,"xstream":44,"ysignal":45}],25:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xstream_1 = require("xstream");
-var PickCombineListener = (function () {
-    function PickCombineListener(key, out, p, ins) {
-        this.key = key;
-        this.out = out;
-        this.p = p;
-        this.val = xstream_1.NO;
-        this.ins = ins;
+var StreamSub = (function () {
+    function StreamSub(_stream, _listener) {
+        this._stream = _stream;
+        this._listener = _listener;
     }
-    PickCombineListener.prototype._n = function (t) {
-        var p = this.p, out = this.out;
-        this.val = t;
-        if (out === null) {
-            return;
-        }
-        this.p.up();
+    StreamSub.prototype.unsubscribe = function () {
+        this._stream.removeListener(this._listener);
     };
-    PickCombineListener.prototype._e = function (err) {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._e(err);
-    };
-    PickCombineListener.prototype._c = function () {
-    };
-    return PickCombineListener;
+    return StreamSub;
 }());
-var PickCombine = (function () {
-    function PickCombine(sel, ins) {
-        this.type = 'combine';
-        this.ins = ins;
-        this.sel = sel;
-        this.out = null;
-        this.ils = new Map();
-        this.inst = null;
+var Observer = (function () {
+    function Observer(_listener) {
+        this._listener = _listener;
     }
-    PickCombine.prototype._start = function (out) {
-        this.out = out;
-        this.ins._add(this);
+    Observer.prototype.next = function (value) {
+        this._listener._n(value);
     };
-    PickCombine.prototype._stop = function () {
-        var ils = this.ils;
-        ils.forEach(function (il) {
-            il.ins._remove(il);
-            il.ins = null;
-            il.out = null;
-            il.val = null;
-        });
-        ils.clear();
-        this.out = null;
-        this.ils = new Map();
-        this.inst = null;
+    Observer.prototype.error = function (err) {
+        this._listener._e(err);
     };
-    PickCombine.prototype.up = function () {
-        var arr = this.inst.arr;
-        var n = arr.length;
-        var ils = this.ils;
-        var outArr = Array(n);
-        for (var i = 0; i < n; ++i) {
-            var sinks = arr[i];
-            var key = sinks._key;
-            if (!ils.has(key)) {
-                return;
-            }
-            var val = ils.get(key).val;
-            if (val === xstream_1.NO) {
-                return;
-            }
-            outArr[i] = val;
-        }
-        this.out._n(outArr);
+    Observer.prototype.complete = function () {
+        this._listener._c();
     };
-    PickCombine.prototype._n = function (inst) {
-        this.inst = inst;
-        var arrSinks = inst.arr;
-        var ils = this.ils;
-        var out = this.out;
-        var sel = this.sel;
-        var dict = inst.dict;
-        var n = arrSinks.length;
-        // remove
-        var removed = false;
-        ils.forEach(function (il, key) {
-            if (!dict.has(key)) {
-                il.ins._remove(il);
-                il.ins = null;
-                il.out = null;
-                il.val = null;
-                ils.delete(key);
-                removed = true;
-            }
-        });
-        if (n === 0) {
-            out._n([]);
-            return;
-        }
-        // add
-        var added = false;
-        for (var i = 0; i < n; ++i) {
-            var sinks = arrSinks[i];
-            var key = sinks._key;
-            var sink = sinks[sel];
-            if (!ils.has(key)) {
-                ils.set(key, new PickCombineListener(key, out, this, sink));
-                added = true;
-            }
-        }
-        if (added) {
-            for (var i = 0; i < n; ++i) {
-                var sinks = arrSinks[i];
-                var key = sinks._key;
-                var sink = sinks[sel];
-                if (sink._ils.length === 0) {
-                    sink._add(ils.get(key));
-                }
-            }
-        }
-        if (removed) {
-            this.up();
-        }
-    };
-    PickCombine.prototype._e = function (e) {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._e(e);
-    };
-    PickCombine.prototype._c = function () {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._c();
-    };
-    return PickCombine;
+    return Observer;
 }());
-function pickCombine(selector) {
-    return function pickCombineOperator(inst$) {
-        return new xstream_1.Stream(new PickCombine(selector, inst$));
-    };
-}
-exports.pickCombine = pickCombine;
-
-},{"xstream":44}],26:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var xstream_1 = require("xstream");
-var PickMergeListener = (function () {
-    function PickMergeListener(out, p, ins) {
-        this.ins = ins;
-        this.out = out;
-        this.p = p;
+var FromObservable = (function () {
+    function FromObservable(observable) {
+        this.type = 'fromObservable';
+        this.ins = observable;
+        this.active = false;
     }
-    PickMergeListener.prototype._n = function (t) {
-        var p = this.p, out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._n(t);
+    FromObservable.prototype._start = function (out) {
+        this.out = out;
+        this.active = true;
+        this._sub = this.ins.subscribe(new Observer(out));
+        if (!this.active)
+            this._sub.unsubscribe();
     };
-    PickMergeListener.prototype._e = function (err) {
-        var out = this.out;
-        if (out === null) {
-            return;
-        }
-        out._e(err);
+    FromObservable.prototype._stop = function () {
+        if (this._sub)
+            this._sub.unsubscribe();
+        this.active = false;
     };
-    PickMergeListener.prototype._c = function () {
-    };
-    return PickMergeListener;
+    return FromObservable;
 }());
-var PickMerge = (function () {
-    function PickMerge(sel, ins) {
-        this.type = 'pickMerge';
-        this.ins = ins;
-        this.out = null;
-        this.sel = sel;
-        this.ils = new Map();
-        this.inst = null;
+var Merge = (function () {
+    function Merge(insArr) {
+        this.type = 'merge';
+        this.insArr = insArr;
+        this.out = NO;
+        this.ac = 0;
     }
-    PickMerge.prototype._start = function (out) {
+    Merge.prototype._start = function (out) {
         this.out = out;
-        this.ins._add(this);
+        var s = this.insArr;
+        var L = s.length;
+        this.ac = L;
+        for (var i = 0; i < L; i++)
+            s[i]._add(this);
     };
-    PickMerge.prototype._stop = function () {
-        var ils = this.ils;
-        ils.forEach(function (il, key) {
-            il.ins._remove(il);
-            il.ins = null;
-            il.out = null;
-            ils.delete(key);
-        });
-        ils.clear();
-        this.out = null;
-        this.ils = new Map();
-        this.inst = null;
+    Merge.prototype._stop = function () {
+        var s = this.insArr;
+        var L = s.length;
+        for (var i = 0; i < L; i++)
+            s[i]._remove(this);
+        this.out = NO;
     };
-    PickMerge.prototype._n = function (inst) {
-        this.inst = inst;
-        var arrSinks = inst.arr;
-        var ils = this.ils;
-        var out = this.out;
-        var sel = this.sel;
-        var n = arrSinks.length;
-        // add
-        for (var i = 0; i < n; ++i) {
-            var sinks = arrSinks[i];
-            var key = sinks._key;
-            var sink = sinks[sel];
-            if (!ils.has(key)) {
-                ils.set(key, new PickMergeListener(out, this, sink));
-            }
-        }
-        for (var i = 0; i < n; ++i) {
-            var sinks = arrSinks[i];
-            var key = sinks._key;
-            var sink = sinks[sel];
-            if (sink._ils.length === 0) {
-                sink._add(ils.get(key));
-            }
-        }
-        // remove
-        ils.forEach(function (il, key) {
-            if (!inst.dict.has(key) || !inst.dict.get(key)) {
-                il.ins._remove(il);
-                il.ins = null;
-                il.out = null;
-                ils.delete(key);
-            }
-        });
-    };
-    PickMerge.prototype._e = function (err) {
+    Merge.prototype._n = function (t) {
         var u = this.out;
-        if (u === null)
+        if (u === NO)
+            return;
+        u._n(t);
+    };
+    Merge.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
             return;
         u._e(err);
     };
-    PickMerge.prototype._c = function () {
+    Merge.prototype._c = function () {
+        if (--this.ac <= 0) {
+            var u = this.out;
+            if (u === NO)
+                return;
+            u._c();
+        }
+    };
+    return Merge;
+}());
+var CombineListener = (function () {
+    function CombineListener(i, out, p) {
+        this.i = i;
+        this.out = out;
+        this.p = p;
+        p.ils.push(this);
+    }
+    CombineListener.prototype._n = function (t) {
+        var p = this.p, out = this.out;
+        if (out === NO)
+            return;
+        if (p.up(t, this.i)) {
+            var a = p.vals;
+            var l = a.length;
+            var b = Array(l);
+            for (var i = 0; i < l; ++i)
+                b[i] = a[i];
+            out._n(b);
+        }
+    };
+    CombineListener.prototype._e = function (err) {
+        var out = this.out;
+        if (out === NO)
+            return;
+        out._e(err);
+    };
+    CombineListener.prototype._c = function () {
+        var p = this.p;
+        if (p.out === NO)
+            return;
+        if (--p.Nc === 0)
+            p.out._c();
+    };
+    return CombineListener;
+}());
+var Combine = (function () {
+    function Combine(insArr) {
+        this.type = 'combine';
+        this.insArr = insArr;
+        this.out = NO;
+        this.ils = [];
+        this.Nc = this.Nn = 0;
+        this.vals = [];
+    }
+    Combine.prototype.up = function (t, i) {
+        var v = this.vals[i];
+        var Nn = !this.Nn ? 0 : v === NO ? --this.Nn : this.Nn;
+        this.vals[i] = t;
+        return Nn === 0;
+    };
+    Combine.prototype._start = function (out) {
+        this.out = out;
+        var s = this.insArr;
+        var n = this.Nc = this.Nn = s.length;
+        var vals = this.vals = new Array(n);
+        if (n === 0) {
+            out._n([]);
+            out._c();
+        }
+        else {
+            for (var i = 0; i < n; i++) {
+                vals[i] = NO;
+                s[i]._add(new CombineListener(i, out, this));
+            }
+        }
+    };
+    Combine.prototype._stop = function () {
+        var s = this.insArr;
+        var n = s.length;
+        var ils = this.ils;
+        for (var i = 0; i < n; i++)
+            s[i]._remove(ils[i]);
+        this.out = NO;
+        this.ils = [];
+        this.vals = [];
+    };
+    return Combine;
+}());
+var FromArray = (function () {
+    function FromArray(a) {
+        this.type = 'fromArray';
+        this.a = a;
+    }
+    FromArray.prototype._start = function (out) {
+        var a = this.a;
+        for (var i = 0, n = a.length; i < n; i++)
+            out._n(a[i]);
+        out._c();
+    };
+    FromArray.prototype._stop = function () {
+    };
+    return FromArray;
+}());
+var FromPromise = (function () {
+    function FromPromise(p) {
+        this.type = 'fromPromise';
+        this.on = false;
+        this.p = p;
+    }
+    FromPromise.prototype._start = function (out) {
+        var prod = this;
+        this.on = true;
+        this.p.then(function (v) {
+            if (prod.on) {
+                out._n(v);
+                out._c();
+            }
+        }, function (e) {
+            out._e(e);
+        }).then(noop, function (err) {
+            setTimeout(function () { throw err; });
+        });
+    };
+    FromPromise.prototype._stop = function () {
+        this.on = false;
+    };
+    return FromPromise;
+}());
+var Periodic = (function () {
+    function Periodic(period) {
+        this.type = 'periodic';
+        this.period = period;
+        this.intervalID = -1;
+        this.i = 0;
+    }
+    Periodic.prototype._start = function (out) {
+        var self = this;
+        function intervalHandler() { out._n(self.i++); }
+        this.intervalID = setInterval(intervalHandler, this.period);
+    };
+    Periodic.prototype._stop = function () {
+        if (this.intervalID !== -1)
+            clearInterval(this.intervalID);
+        this.intervalID = -1;
+        this.i = 0;
+    };
+    return Periodic;
+}());
+var Debug = (function () {
+    function Debug(ins, arg) {
+        this.type = 'debug';
+        this.ins = ins;
+        this.out = NO;
+        this.s = noop;
+        this.l = '';
+        if (typeof arg === 'string')
+            this.l = arg;
+        else if (typeof arg === 'function')
+            this.s = arg;
+    }
+    Debug.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    Debug.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+    };
+    Debug.prototype._n = function (t) {
         var u = this.out;
-        if (u === null)
+        if (u === NO)
+            return;
+        var s = this.s, l = this.l;
+        if (s !== noop) {
+            try {
+                s(t);
+            }
+            catch (e) {
+                u._e(e);
+            }
+        }
+        else if (l)
+            console.log(l + ':', t);
+        else
+            console.log(t);
+        u._n(t);
+    };
+    Debug.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Debug.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
             return;
         u._c();
     };
-    return PickMerge;
+    return Debug;
 }());
-function pickMerge(selector) {
-    return function pickMergeOperator(inst$) {
-        return new xstream_1.Stream(new PickMerge(selector, inst$));
+var Drop = (function () {
+    function Drop(max, ins) {
+        this.type = 'drop';
+        this.ins = ins;
+        this.out = NO;
+        this.max = max;
+        this.dropped = 0;
+    }
+    Drop.prototype._start = function (out) {
+        this.out = out;
+        this.dropped = 0;
+        this.ins._add(this);
     };
-}
-exports.pickMerge = pickMerge;
+    Drop.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+    };
+    Drop.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        if (this.dropped++ >= this.max)
+            u._n(t);
+    };
+    Drop.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Drop.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    return Drop;
+}());
+var EndWhenListener = (function () {
+    function EndWhenListener(out, op) {
+        this.out = out;
+        this.op = op;
+    }
+    EndWhenListener.prototype._n = function () {
+        this.op.end();
+    };
+    EndWhenListener.prototype._e = function (err) {
+        this.out._e(err);
+    };
+    EndWhenListener.prototype._c = function () {
+        this.op.end();
+    };
+    return EndWhenListener;
+}());
+var EndWhen = (function () {
+    function EndWhen(o, ins) {
+        this.type = 'endWhen';
+        this.ins = ins;
+        this.out = NO;
+        this.o = o;
+        this.oil = NO_IL;
+    }
+    EndWhen.prototype._start = function (out) {
+        this.out = out;
+        this.o._add(this.oil = new EndWhenListener(out, this));
+        this.ins._add(this);
+    };
+    EndWhen.prototype._stop = function () {
+        this.ins._remove(this);
+        this.o._remove(this.oil);
+        this.out = NO;
+        this.oil = NO_IL;
+    };
+    EndWhen.prototype.end = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    EndWhen.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._n(t);
+    };
+    EndWhen.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    EndWhen.prototype._c = function () {
+        this.end();
+    };
+    return EndWhen;
+}());
+var Filter = (function () {
+    function Filter(passes, ins) {
+        this.type = 'filter';
+        this.ins = ins;
+        this.out = NO;
+        this.f = passes;
+    }
+    Filter.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    Filter.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+    };
+    Filter.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        var r = _try(this, t, u);
+        if (r === NO || !r)
+            return;
+        u._n(t);
+    };
+    Filter.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Filter.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    return Filter;
+}());
+var FlattenListener = (function () {
+    function FlattenListener(out, op) {
+        this.out = out;
+        this.op = op;
+    }
+    FlattenListener.prototype._n = function (t) {
+        this.out._n(t);
+    };
+    FlattenListener.prototype._e = function (err) {
+        this.out._e(err);
+    };
+    FlattenListener.prototype._c = function () {
+        this.op.inner = NO;
+        this.op.less();
+    };
+    return FlattenListener;
+}());
+var Flatten = (function () {
+    function Flatten(ins) {
+        this.type = 'flatten';
+        this.ins = ins;
+        this.out = NO;
+        this.open = true;
+        this.inner = NO;
+        this.il = NO_IL;
+    }
+    Flatten.prototype._start = function (out) {
+        this.out = out;
+        this.open = true;
+        this.inner = NO;
+        this.il = NO_IL;
+        this.ins._add(this);
+    };
+    Flatten.prototype._stop = function () {
+        this.ins._remove(this);
+        if (this.inner !== NO)
+            this.inner._remove(this.il);
+        this.out = NO;
+        this.open = true;
+        this.inner = NO;
+        this.il = NO_IL;
+    };
+    Flatten.prototype.less = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        if (!this.open && this.inner === NO)
+            u._c();
+    };
+    Flatten.prototype._n = function (s) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        var _a = this, inner = _a.inner, il = _a.il;
+        if (inner !== NO && il !== NO_IL)
+            inner._remove(il);
+        (this.inner = s)._add(this.il = new FlattenListener(u, this));
+    };
+    Flatten.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Flatten.prototype._c = function () {
+        this.open = false;
+        this.less();
+    };
+    return Flatten;
+}());
+var Fold = (function () {
+    function Fold(f, seed, ins) {
+        var _this = this;
+        this.type = 'fold';
+        this.ins = ins;
+        this.out = NO;
+        this.f = function (t) { return f(_this.acc, t); };
+        this.acc = this.seed = seed;
+    }
+    Fold.prototype._start = function (out) {
+        this.out = out;
+        this.acc = this.seed;
+        out._n(this.acc);
+        this.ins._add(this);
+    };
+    Fold.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+        this.acc = this.seed;
+    };
+    Fold.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        var r = _try(this, t, u);
+        if (r === NO)
+            return;
+        u._n(this.acc = r);
+    };
+    Fold.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Fold.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    return Fold;
+}());
+var Last = (function () {
+    function Last(ins) {
+        this.type = 'last';
+        this.ins = ins;
+        this.out = NO;
+        this.has = false;
+        this.val = NO;
+    }
+    Last.prototype._start = function (out) {
+        this.out = out;
+        this.has = false;
+        this.ins._add(this);
+    };
+    Last.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+        this.val = NO;
+    };
+    Last.prototype._n = function (t) {
+        this.has = true;
+        this.val = t;
+    };
+    Last.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Last.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        if (this.has) {
+            u._n(this.val);
+            u._c();
+        }
+        else
+            u._e(new Error('last() failed because input stream completed'));
+    };
+    return Last;
+}());
+var MapOp = (function () {
+    function MapOp(project, ins) {
+        this.type = 'map';
+        this.ins = ins;
+        this.out = NO;
+        this.f = project;
+    }
+    MapOp.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    MapOp.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+    };
+    MapOp.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        var r = _try(this, t, u);
+        if (r === NO)
+            return;
+        u._n(r);
+    };
+    MapOp.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    MapOp.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    return MapOp;
+}());
+var Remember = (function () {
+    function Remember(ins) {
+        this.type = 'remember';
+        this.ins = ins;
+        this.out = NO;
+    }
+    Remember.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(out);
+    };
+    Remember.prototype._stop = function () {
+        this.ins._remove(this.out);
+        this.out = NO;
+    };
+    return Remember;
+}());
+var ReplaceError = (function () {
+    function ReplaceError(replacer, ins) {
+        this.type = 'replaceError';
+        this.ins = ins;
+        this.out = NO;
+        this.f = replacer;
+    }
+    ReplaceError.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    ReplaceError.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+    };
+    ReplaceError.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._n(t);
+    };
+    ReplaceError.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        try {
+            this.ins._remove(this);
+            (this.ins = this.f(err))._add(this);
+        }
+        catch (e) {
+            u._e(e);
+        }
+    };
+    ReplaceError.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    return ReplaceError;
+}());
+var StartWith = (function () {
+    function StartWith(ins, val) {
+        this.type = 'startWith';
+        this.ins = ins;
+        this.out = NO;
+        this.val = val;
+    }
+    StartWith.prototype._start = function (out) {
+        this.out = out;
+        this.out._n(this.val);
+        this.ins._add(out);
+    };
+    StartWith.prototype._stop = function () {
+        this.ins._remove(this.out);
+        this.out = NO;
+    };
+    return StartWith;
+}());
+var Take = (function () {
+    function Take(max, ins) {
+        this.type = 'take';
+        this.ins = ins;
+        this.out = NO;
+        this.max = max;
+        this.taken = 0;
+    }
+    Take.prototype._start = function (out) {
+        this.out = out;
+        this.taken = 0;
+        if (this.max <= 0)
+            out._c();
+        else
+            this.ins._add(this);
+    };
+    Take.prototype._stop = function () {
+        this.ins._remove(this);
+        this.out = NO;
+    };
+    Take.prototype._n = function (t) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        var m = ++this.taken;
+        if (m < this.max)
+            u._n(t);
+        else if (m === this.max) {
+            u._n(t);
+            u._c();
+        }
+    };
+    Take.prototype._e = function (err) {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._e(err);
+    };
+    Take.prototype._c = function () {
+        var u = this.out;
+        if (u === NO)
+            return;
+        u._c();
+    };
+    return Take;
+}());
+var Stream = (function () {
+    function Stream(producer) {
+        this._prod = producer || NO;
+        this._ils = [];
+        this._stopID = NO;
+        this._dl = NO;
+        this._d = false;
+        this._target = NO;
+        this._err = NO;
+    }
+    Stream.prototype._n = function (t) {
+        var a = this._ils;
+        var L = a.length;
+        if (this._d)
+            this._dl._n(t);
+        if (L == 1)
+            a[0]._n(t);
+        else if (L == 0)
+            return;
+        else {
+            var b = cp(a);
+            for (var i = 0; i < L; i++)
+                b[i]._n(t);
+        }
+    };
+    Stream.prototype._e = function (err) {
+        if (this._err !== NO)
+            return;
+        this._err = err;
+        var a = this._ils;
+        var L = a.length;
+        this._x();
+        if (this._d)
+            this._dl._e(err);
+        if (L == 1)
+            a[0]._e(err);
+        else if (L == 0)
+            return;
+        else {
+            var b = cp(a);
+            for (var i = 0; i < L; i++)
+                b[i]._e(err);
+        }
+        if (!this._d && L == 0)
+            throw this._err;
+    };
+    Stream.prototype._c = function () {
+        var a = this._ils;
+        var L = a.length;
+        this._x();
+        if (this._d)
+            this._dl._c();
+        if (L == 1)
+            a[0]._c();
+        else if (L == 0)
+            return;
+        else {
+            var b = cp(a);
+            for (var i = 0; i < L; i++)
+                b[i]._c();
+        }
+    };
+    Stream.prototype._x = function () {
+        if (this._ils.length === 0)
+            return;
+        if (this._prod !== NO)
+            this._prod._stop();
+        this._err = NO;
+        this._ils = [];
+    };
+    Stream.prototype._stopNow = function () {
+        // WARNING: code that calls this method should
+        // first check if this._prod is valid (not `NO`)
+        this._prod._stop();
+        this._err = NO;
+        this._stopID = NO;
+    };
+    Stream.prototype._add = function (il) {
+        var ta = this._target;
+        if (ta !== NO)
+            return ta._add(il);
+        var a = this._ils;
+        a.push(il);
+        if (a.length > 1)
+            return;
+        if (this._stopID !== NO) {
+            clearTimeout(this._stopID);
+            this._stopID = NO;
+        }
+        else {
+            var p = this._prod;
+            if (p !== NO)
+                p._start(this);
+        }
+    };
+    Stream.prototype._remove = function (il) {
+        var _this = this;
+        var ta = this._target;
+        if (ta !== NO)
+            return ta._remove(il);
+        var a = this._ils;
+        var i = a.indexOf(il);
+        if (i > -1) {
+            a.splice(i, 1);
+            if (this._prod !== NO && a.length <= 0) {
+                this._err = NO;
+                this._stopID = setTimeout(function () { return _this._stopNow(); });
+            }
+            else if (a.length === 1) {
+                this._pruneCycles();
+            }
+        }
+    };
+    // If all paths stemming from `this` stream eventually end at `this`
+    // stream, then we remove the single listener of `this` stream, to
+    // force it to end its execution and dispose resources. This method
+    // assumes as a precondition that this._ils has just one listener.
+    Stream.prototype._pruneCycles = function () {
+        if (this._hasNoSinks(this, []))
+            this._remove(this._ils[0]);
+    };
+    // Checks whether *there is no* path starting from `x` that leads to an end
+    // listener (sink) in the stream graph, following edges A->B where B is a
+    // listener of A. This means these paths constitute a cycle somehow. Is given
+    // a trace of all visited nodes so far.
+    Stream.prototype._hasNoSinks = function (x, trace) {
+        if (trace.indexOf(x) !== -1)
+            return true;
+        else if (x.out === this)
+            return true;
+        else if (x.out && x.out !== NO)
+            return this._hasNoSinks(x.out, trace.concat(x));
+        else if (x._ils) {
+            for (var i = 0, N = x._ils.length; i < N; i++)
+                if (!this._hasNoSinks(x._ils[i], trace.concat(x)))
+                    return false;
+            return true;
+        }
+        else
+            return false;
+    };
+    Stream.prototype.ctor = function () {
+        return this instanceof MemoryStream ? MemoryStream : Stream;
+    };
+    /**
+     * Adds a Listener to the Stream.
+     *
+     * @param {Listener} listener
+     */
+    Stream.prototype.addListener = function (listener) {
+        listener._n = listener.next || noop;
+        listener._e = listener.error || noop;
+        listener._c = listener.complete || noop;
+        this._add(listener);
+    };
+    /**
+     * Removes a Listener from the Stream, assuming the Listener was added to it.
+     *
+     * @param {Listener<T>} listener
+     */
+    Stream.prototype.removeListener = function (listener) {
+        this._remove(listener);
+    };
+    /**
+     * Adds a Listener to the Stream returning a Subscription to remove that
+     * listener.
+     *
+     * @param {Listener} listener
+     * @returns {Subscription}
+     */
+    Stream.prototype.subscribe = function (listener) {
+        this.addListener(listener);
+        return new StreamSub(this, listener);
+    };
+    /**
+     * Add interop between most.js and RxJS 5
+     *
+     * @returns {Stream}
+     */
+    Stream.prototype[symbol_observable_1.default] = function () {
+        return this;
+    };
+    /**
+     * Creates a new Stream given a Producer.
+     *
+     * @factory true
+     * @param {Producer} producer An optional Producer that dictates how to
+     * start, generate events, and stop the Stream.
+     * @return {Stream}
+     */
+    Stream.create = function (producer) {
+        if (producer) {
+            if (typeof producer.start !== 'function'
+                || typeof producer.stop !== 'function')
+                throw new Error('producer requires both start and stop functions');
+            internalizeProducer(producer); // mutates the input
+        }
+        return new Stream(producer);
+    };
+    /**
+     * Creates a new MemoryStream given a Producer.
+     *
+     * @factory true
+     * @param {Producer} producer An optional Producer that dictates how to
+     * start, generate events, and stop the Stream.
+     * @return {MemoryStream}
+     */
+    Stream.createWithMemory = function (producer) {
+        if (producer)
+            internalizeProducer(producer); // mutates the input
+        return new MemoryStream(producer);
+    };
+    /**
+     * Creates a Stream that does nothing when started. It never emits any event.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     *          never
+     * -----------------------
+     * ```
+     *
+     * @factory true
+     * @return {Stream}
+     */
+    Stream.never = function () {
+        return new Stream({ _start: noop, _stop: noop });
+    };
+    /**
+     * Creates a Stream that immediately emits the "complete" notification when
+     * started, and that's it.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * empty
+     * -|
+     * ```
+     *
+     * @factory true
+     * @return {Stream}
+     */
+    Stream.empty = function () {
+        return new Stream({
+            _start: function (il) { il._c(); },
+            _stop: noop,
+        });
+    };
+    /**
+     * Creates a Stream that immediately emits an "error" notification with the
+     * value you passed as the `error` argument when the stream starts, and that's
+     * it.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * throw(X)
+     * -X
+     * ```
+     *
+     * @factory true
+     * @param error The error event to emit on the created stream.
+     * @return {Stream}
+     */
+    Stream.throw = function (error) {
+        return new Stream({
+            _start: function (il) { il._e(error); },
+            _stop: noop,
+        });
+    };
+    /**
+     * Creates a stream from an Array, Promise, or an Observable.
+     *
+     * @factory true
+     * @param {Array|PromiseLike|Observable} input The input to make a stream from.
+     * @return {Stream}
+     */
+    Stream.from = function (input) {
+        if (typeof input[symbol_observable_1.default] === 'function')
+            return Stream.fromObservable(input);
+        else if (typeof input.then === 'function')
+            return Stream.fromPromise(input);
+        else if (Array.isArray(input))
+            return Stream.fromArray(input);
+        throw new TypeError("Type of input to from() must be an Array, Promise, or Observable");
+    };
+    /**
+     * Creates a Stream that immediately emits the arguments that you give to
+     * *of*, then completes.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * of(1,2,3)
+     * 123|
+     * ```
+     *
+     * @factory true
+     * @param a The first value you want to emit as an event on the stream.
+     * @param b The second value you want to emit as an event on the stream. One
+     * or more of these values may be given as arguments.
+     * @return {Stream}
+     */
+    Stream.of = function () {
+        var items = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            items[_i] = arguments[_i];
+        }
+        return Stream.fromArray(items);
+    };
+    /**
+     * Converts an array to a stream. The returned stream will emit synchronously
+     * all the items in the array, and then complete.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * fromArray([1,2,3])
+     * 123|
+     * ```
+     *
+     * @factory true
+     * @param {Array} array The array to be converted as a stream.
+     * @return {Stream}
+     */
+    Stream.fromArray = function (array) {
+        return new Stream(new FromArray(array));
+    };
+    /**
+     * Converts a promise to a stream. The returned stream will emit the resolved
+     * value of the promise, and then complete. However, if the promise is
+     * rejected, the stream will emit the corresponding error.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * fromPromise( ----42 )
+     * -----------------42|
+     * ```
+     *
+     * @factory true
+     * @param {PromiseLike} promise The promise to be converted as a stream.
+     * @return {Stream}
+     */
+    Stream.fromPromise = function (promise) {
+        return new Stream(new FromPromise(promise));
+    };
+    /**
+     * Converts an Observable into a Stream.
+     *
+     * @factory true
+     * @param {any} observable The observable to be converted as a stream.
+     * @return {Stream}
+     */
+    Stream.fromObservable = function (obs) {
+        if (obs.endWhen)
+            return obs;
+        return new Stream(new FromObservable(obs));
+    };
+    /**
+     * Creates a stream that periodically emits incremental numbers, every
+     * `period` milliseconds.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     *     periodic(1000)
+     * ---0---1---2---3---4---...
+     * ```
+     *
+     * @factory true
+     * @param {number} period The interval in milliseconds to use as a rate of
+     * emission.
+     * @return {Stream}
+     */
+    Stream.periodic = function (period) {
+        return new Stream(new Periodic(period));
+    };
+    Stream.prototype._map = function (project) {
+        return new (this.ctor())(new MapOp(project, this));
+    };
+    /**
+     * Transforms each event from the input Stream through a `project` function,
+     * to get a Stream that emits those transformed events.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --1---3--5-----7------
+     *    map(i => i * 10)
+     * --10--30-50----70-----
+     * ```
+     *
+     * @param {Function} project A function of type `(t: T) => U` that takes event
+     * `t` of type `T` from the input Stream and produces an event of type `U`, to
+     * be emitted on the output Stream.
+     * @return {Stream}
+     */
+    Stream.prototype.map = function (project) {
+        return this._map(project);
+    };
+    /**
+     * It's like `map`, but transforms each input event to always the same
+     * constant value on the output Stream.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --1---3--5-----7-----
+     *       mapTo(10)
+     * --10--10-10----10----
+     * ```
+     *
+     * @param projectedValue A value to emit on the output Stream whenever the
+     * input Stream emits any value.
+     * @return {Stream}
+     */
+    Stream.prototype.mapTo = function (projectedValue) {
+        var s = this.map(function () { return projectedValue; });
+        var op = s._prod;
+        op.type = 'mapTo';
+        return s;
+    };
+    /**
+     * Only allows events that pass the test given by the `passes` argument.
+     *
+     * Each event from the input stream is given to the `passes` function. If the
+     * function returns `true`, the event is forwarded to the output stream,
+     * otherwise it is ignored and not forwarded.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --1---2--3-----4-----5---6--7-8--
+     *     filter(i => i % 2 === 0)
+     * ------2--------4---------6----8--
+     * ```
+     *
+     * @param {Function} passes A function of type `(t: T) +> boolean` that takes
+     * an event from the input stream and checks if it passes, by returning a
+     * boolean.
+     * @return {Stream}
+     */
+    Stream.prototype.filter = function (passes) {
+        var p = this._prod;
+        if (p instanceof Filter)
+            return new Stream(new Filter(and(p.f, passes), p.ins));
+        return new Stream(new Filter(passes, this));
+    };
+    /**
+     * Lets the first `amount` many events from the input stream pass to the
+     * output stream, then makes the output stream complete.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --a---b--c----d---e--
+     *    take(3)
+     * --a---b--c|
+     * ```
+     *
+     * @param {number} amount How many events to allow from the input stream
+     * before completing the output stream.
+     * @return {Stream}
+     */
+    Stream.prototype.take = function (amount) {
+        return new (this.ctor())(new Take(amount, this));
+    };
+    /**
+     * Ignores the first `amount` many events from the input stream, and then
+     * after that starts forwarding events from the input stream to the output
+     * stream.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --a---b--c----d---e--
+     *       drop(3)
+     * --------------d---e--
+     * ```
+     *
+     * @param {number} amount How many events to ignore from the input stream
+     * before forwarding all events from the input stream to the output stream.
+     * @return {Stream}
+     */
+    Stream.prototype.drop = function (amount) {
+        return new Stream(new Drop(amount, this));
+    };
+    /**
+     * When the input stream completes, the output stream will emit the last event
+     * emitted by the input stream, and then will also complete.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --a---b--c--d----|
+     *       last()
+     * -----------------d|
+     * ```
+     *
+     * @return {Stream}
+     */
+    Stream.prototype.last = function () {
+        return new Stream(new Last(this));
+    };
+    /**
+     * Prepends the given `initial` value to the sequence of events emitted by the
+     * input stream. The returned stream is a MemoryStream, which means it is
+     * already `remember()`'d.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * ---1---2-----3---
+     *   startWith(0)
+     * 0--1---2-----3---
+     * ```
+     *
+     * @param initial The value or event to prepend.
+     * @return {MemoryStream}
+     */
+    Stream.prototype.startWith = function (initial) {
+        return new MemoryStream(new StartWith(this, initial));
+    };
+    /**
+     * Uses another stream to determine when to complete the current stream.
+     *
+     * When the given `other` stream emits an event or completes, the output
+     * stream will complete. Before that happens, the output stream will behaves
+     * like the input stream.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * ---1---2-----3--4----5----6---
+     *   endWhen( --------a--b--| )
+     * ---1---2-----3--4--|
+     * ```
+     *
+     * @param other Some other stream that is used to know when should the output
+     * stream of this operator complete.
+     * @return {Stream}
+     */
+    Stream.prototype.endWhen = function (other) {
+        return new (this.ctor())(new EndWhen(other, this));
+    };
+    /**
+     * "Folds" the stream onto itself.
+     *
+     * Combines events from the past throughout
+     * the entire execution of the input stream, allowing you to accumulate them
+     * together. It's essentially like `Array.prototype.reduce`. The returned
+     * stream is a MemoryStream, which means it is already `remember()`'d.
+     *
+     * The output stream starts by emitting the `seed` which you give as argument.
+     * Then, when an event happens on the input stream, it is combined with that
+     * seed value through the `accumulate` function, and the output value is
+     * emitted on the output stream. `fold` remembers that output value as `acc`
+     * ("accumulator"), and then when a new input event `t` happens, `acc` will be
+     * combined with that to produce the new `acc` and so forth.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * ------1-----1--2----1----1------
+     *   fold((acc, x) => acc + x, 3)
+     * 3-----4-----5--7----8----9------
+     * ```
+     *
+     * @param {Function} accumulate A function of type `(acc: R, t: T) => R` that
+     * takes the previous accumulated value `acc` and the incoming event from the
+     * input stream and produces the new accumulated value.
+     * @param seed The initial accumulated value, of type `R`.
+     * @return {MemoryStream}
+     */
+    Stream.prototype.fold = function (accumulate, seed) {
+        return new MemoryStream(new Fold(accumulate, seed, this));
+    };
+    /**
+     * Replaces an error with another stream.
+     *
+     * When (and if) an error happens on the input stream, instead of forwarding
+     * that error to the output stream, *replaceError* will call the `replace`
+     * function which returns the stream that the output stream will replicate.
+     * And, in case that new stream also emits an error, `replace` will be called
+     * again to get another stream to start replicating.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --1---2-----3--4-----X
+     *   replaceError( () => --10--| )
+     * --1---2-----3--4--------10--|
+     * ```
+     *
+     * @param {Function} replace A function of type `(err) => Stream` that takes
+     * the error that occurred on the input stream or on the previous replacement
+     * stream and returns a new stream. The output stream will behave like the
+     * stream that this function returns.
+     * @return {Stream}
+     */
+    Stream.prototype.replaceError = function (replace) {
+        return new (this.ctor())(new ReplaceError(replace, this));
+    };
+    /**
+     * Flattens a "stream of streams", handling only one nested stream at a time
+     * (no concurrency).
+     *
+     * If the input stream is a stream that emits streams, then this operator will
+     * return an output stream which is a flat stream: emits regular events. The
+     * flattening happens without concurrency. It works like this: when the input
+     * stream emits a nested stream, *flatten* will start imitating that nested
+     * one. However, as soon as the next nested stream is emitted on the input
+     * stream, *flatten* will forget the previous nested one it was imitating, and
+     * will start imitating the new nested one.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --+--------+---------------
+     *   \        \
+     *    \       ----1----2---3--
+     *    --a--b----c----d--------
+     *           flatten
+     * -----a--b------1----2---3--
+     * ```
+     *
+     * @return {Stream}
+     */
+    Stream.prototype.flatten = function () {
+        var p = this._prod;
+        return new Stream(new Flatten(this));
+    };
+    /**
+     * Passes the input stream to a custom operator, to produce an output stream.
+     *
+     * *compose* is a handy way of using an existing function in a chained style.
+     * Instead of writing `outStream = f(inStream)` you can write
+     * `outStream = inStream.compose(f)`.
+     *
+     * @param {function} operator A function that takes a stream as input and
+     * returns a stream as well.
+     * @return {Stream}
+     */
+    Stream.prototype.compose = function (operator) {
+        return operator(this);
+    };
+    /**
+     * Returns an output stream that behaves like the input stream, but also
+     * remembers the most recent event that happens on the input stream, so that a
+     * newly added listener will immediately receive that memorised event.
+     *
+     * @return {MemoryStream}
+     */
+    Stream.prototype.remember = function () {
+        return new MemoryStream(new Remember(this));
+    };
+    /**
+     * Returns an output stream that identically behaves like the input stream,
+     * but also runs a `spy` function for each event, to help you debug your app.
+     *
+     * *debug* takes a `spy` function as argument, and runs that for each event
+     * happening on the input stream. If you don't provide the `spy` argument,
+     * then *debug* will just `console.log` each event. This helps you to
+     * understand the flow of events through some operator chain.
+     *
+     * Please note that if the output stream has no listeners, then it will not
+     * start, which means `spy` will never run because no actual event happens in
+     * that case.
+     *
+     * Marble diagram:
+     *
+     * ```text
+     * --1----2-----3-----4--
+     *         debug
+     * --1----2-----3-----4--
+     * ```
+     *
+     * @param {function} labelOrSpy A string to use as the label when printing
+     * debug information on the console, or a 'spy' function that takes an event
+     * as argument, and does not need to return anything.
+     * @return {Stream}
+     */
+    Stream.prototype.debug = function (labelOrSpy) {
+        return new (this.ctor())(new Debug(this, labelOrSpy));
+    };
+    /**
+     * *imitate* changes this current Stream to emit the same events that the
+     * `other` given Stream does. This method returns nothing.
+     *
+     * This method exists to allow one thing: **circular dependency of streams**.
+     * For instance, let's imagine that for some reason you need to create a
+     * circular dependency where stream `first$` depends on stream `second$`
+     * which in turn depends on `first$`:
+     *
+     * <!-- skip-example -->
+     * ```js
+     * import delay from 'xstream/extra/delay'
+     *
+     * var first$ = second$.map(x => x * 10).take(3);
+     * var second$ = first$.map(x => x + 1).startWith(1).compose(delay(100));
+     * ```
+     *
+     * However, that is invalid JavaScript, because `second$` is undefined
+     * on the first line. This is how *imitate* can help solve it:
+     *
+     * ```js
+     * import delay from 'xstream/extra/delay'
+     *
+     * var secondProxy$ = xs.create();
+     * var first$ = secondProxy$.map(x => x * 10).take(3);
+     * var second$ = first$.map(x => x + 1).startWith(1).compose(delay(100));
+     * secondProxy$.imitate(second$);
+     * ```
+     *
+     * We create `secondProxy$` before the others, so it can be used in the
+     * declaration of `first$`. Then, after both `first$` and `second$` are
+     * defined, we hook `secondProxy$` with `second$` with `imitate()` to tell
+     * that they are "the same". `imitate` will not trigger the start of any
+     * stream, it just binds `secondProxy$` and `second$` together.
+     *
+     * The following is an example where `imitate()` is important in Cycle.js
+     * applications. A parent component contains some child components. A child
+     * has an action stream which is given to the parent to define its state:
+     *
+     * <!-- skip-example -->
+     * ```js
+     * const childActionProxy$ = xs.create();
+     * const parent = Parent({...sources, childAction$: childActionProxy$});
+     * const childAction$ = parent.state$.map(s => s.child.action$).flatten();
+     * childActionProxy$.imitate(childAction$);
+     * ```
+     *
+     * Note, though, that **`imitate()` does not support MemoryStreams**. If we
+     * would attempt to imitate a MemoryStream in a circular dependency, we would
+     * either get a race condition (where the symptom would be "nothing happens")
+     * or an infinite cyclic emission of values. It's useful to think about
+     * MemoryStreams as cells in a spreadsheet. It doesn't make any sense to
+     * define a spreadsheet cell `A1` with a formula that depends on `B1` and
+     * cell `B1` defined with a formula that depends on `A1`.
+     *
+     * If you find yourself wanting to use `imitate()` with a
+     * MemoryStream, you should rework your code around `imitate()` to use a
+     * Stream instead. Look for the stream in the circular dependency that
+     * represents an event stream, and that would be a candidate for creating a
+     * proxy Stream which then imitates the target Stream.
+     *
+     * @param {Stream} target The other stream to imitate on the current one. Must
+     * not be a MemoryStream.
+     */
+    Stream.prototype.imitate = function (target) {
+        if (target instanceof MemoryStream)
+            throw new Error('A MemoryStream was given to imitate(), but it only ' +
+                'supports a Stream. Read more about this restriction here: ' +
+                'https://github.com/staltz/xstream#faq');
+        this._target = target;
+        for (var ils = this._ils, N = ils.length, i = 0; i < N; i++)
+            target._add(ils[i]);
+        this._ils = [];
+    };
+    /**
+     * Forces the Stream to emit the given value to its listeners.
+     *
+     * As the name indicates, if you use this, you are most likely doing something
+     * The Wrong Way. Please try to understand the reactive way before using this
+     * method. Use it only when you know what you are doing.
+     *
+     * @param value The "next" value you want to broadcast to all listeners of
+     * this Stream.
+     */
+    Stream.prototype.shamefullySendNext = function (value) {
+        this._n(value);
+    };
+    /**
+     * Forces the Stream to emit the given error to its listeners.
+     *
+     * As the name indicates, if you use this, you are most likely doing something
+     * The Wrong Way. Please try to understand the reactive way before using this
+     * method. Use it only when you know what you are doing.
+     *
+     * @param {any} error The error you want to broadcast to all the listeners of
+     * this Stream.
+     */
+    Stream.prototype.shamefullySendError = function (error) {
+        this._e(error);
+    };
+    /**
+     * Forces the Stream to emit the "completed" event to its listeners.
+     *
+     * As the name indicates, if you use this, you are most likely doing something
+     * The Wrong Way. Please try to understand the reactive way before using this
+     * method. Use it only when you know what you are doing.
+     */
+    Stream.prototype.shamefullySendComplete = function () {
+        this._c();
+    };
+    /**
+     * Adds a "debug" listener to the stream. There can only be one debug
+     * listener, that's why this is 'setDebugListener'. To remove the debug
+     * listener, just call setDebugListener(null).
+     *
+     * A debug listener is like any other listener. The only difference is that a
+     * debug listener is "stealthy": its presence/absence does not trigger the
+     * start/stop of the stream (or the producer inside the stream). This is
+     * useful so you can inspect what is going on without changing the behavior
+     * of the program. If you have an idle stream and you add a normal listener to
+     * it, the stream will start executing. But if you set a debug listener on an
+     * idle stream, it won't start executing (not until the first normal listener
+     * is added).
+     *
+     * As the name indicates, we don't recommend using this method to build app
+     * logic. In fact, in most cases the debug operator works just fine. Only use
+     * this one if you know what you're doing.
+     *
+     * @param {Listener<T>} listener
+     */
+    Stream.prototype.setDebugListener = function (listener) {
+        if (!listener) {
+            this._d = false;
+            this._dl = NO;
+        }
+        else {
+            this._d = true;
+            listener._n = listener.next || noop;
+            listener._e = listener.error || noop;
+            listener._c = listener.complete || noop;
+            this._dl = listener;
+        }
+    };
+    return Stream;
+}());
+/**
+ * Blends multiple streams together, emitting events from all of them
+ * concurrently.
+ *
+ * *merge* takes multiple streams as arguments, and creates a stream that
+ * behaves like each of the argument streams, in parallel.
+ *
+ * Marble diagram:
+ *
+ * ```text
+ * --1----2-----3--------4---
+ * ----a-----b----c---d------
+ *            merge
+ * --1-a--2--b--3-c---d--4---
+ * ```
+ *
+ * @factory true
+ * @param {Stream} stream1 A stream to merge together with other streams.
+ * @param {Stream} stream2 A stream to merge together with other streams. Two
+ * or more streams may be given as arguments.
+ * @return {Stream}
+ */
+Stream.merge = function merge() {
+    var streams = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        streams[_i] = arguments[_i];
+    }
+    return new Stream(new Merge(streams));
+};
+/**
+ * Combines multiple input streams together to return a stream whose events
+ * are arrays that collect the latest events from each input stream.
+ *
+ * *combine* internally remembers the most recent event from each of the input
+ * streams. When any of the input streams emits an event, that event together
+ * with all the other saved events are combined into an array. That array will
+ * be emitted on the output stream. It's essentially a way of joining together
+ * the events from multiple streams.
+ *
+ * Marble diagram:
+ *
+ * ```text
+ * --1----2-----3--------4---
+ * ----a-----b-----c--d------
+ *          combine
+ * ----1a-2a-2b-3b-3c-3d-4d--
+ * ```
+ *
+ * Note: to minimize garbage collection, *combine* uses the same array
+ * instance for each emission.  If you need to compare emissions over time,
+ * cache the values with `map` first:
+ *
+ * ```js
+ * import pairwise from 'xstream/extra/pairwise'
+ *
+ * const stream1 = xs.of(1);
+ * const stream2 = xs.of(2);
+ *
+ * xs.combine(stream1, stream2).map(
+ *   combinedEmissions => ([ ...combinedEmissions ])
+ * ).compose(pairwise)
+ * ```
+ *
+ * @factory true
+ * @param {Stream} stream1 A stream to combine together with other streams.
+ * @param {Stream} stream2 A stream to combine together with other streams.
+ * Multiple streams, not just two, may be given as arguments.
+ * @return {Stream}
+ */
+Stream.combine = function combine() {
+    var streams = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        streams[_i] = arguments[_i];
+    }
+    return new Stream(new Combine(streams));
+};
+exports.Stream = Stream;
+var MemoryStream = (function (_super) {
+    __extends(MemoryStream, _super);
+    function MemoryStream(producer) {
+        var _this = _super.call(this, producer) || this;
+        _this._has = false;
+        return _this;
+    }
+    MemoryStream.prototype._n = function (x) {
+        this._v = x;
+        this._has = true;
+        _super.prototype._n.call(this, x);
+    };
+    MemoryStream.prototype._add = function (il) {
+        var ta = this._target;
+        if (ta !== NO)
+            return ta._add(il);
+        var a = this._ils;
+        a.push(il);
+        if (a.length > 1) {
+            if (this._has)
+                il._n(this._v);
+            return;
+        }
+        if (this._stopID !== NO) {
+            if (this._has)
+                il._n(this._v);
+            clearTimeout(this._stopID);
+            this._stopID = NO;
+        }
+        else if (this._has)
+            il._n(this._v);
+        else {
+            var p = this._prod;
+            if (p !== NO)
+                p._start(this);
+        }
+    };
+    MemoryStream.prototype._stopNow = function () {
+        this._has = false;
+        _super.prototype._stopNow.call(this);
+    };
+    MemoryStream.prototype._x = function () {
+        this._has = false;
+        _super.prototype._x.call(this);
+    };
+    MemoryStream.prototype.map = function (project) {
+        return this._map(project);
+    };
+    MemoryStream.prototype.mapTo = function (projectedValue) {
+        return _super.prototype.mapTo.call(this, projectedValue);
+    };
+    MemoryStream.prototype.take = function (amount) {
+        return _super.prototype.take.call(this, amount);
+    };
+    MemoryStream.prototype.endWhen = function (other) {
+        return _super.prototype.endWhen.call(this, other);
+    };
+    MemoryStream.prototype.replaceError = function (replace) {
+        return _super.prototype.replaceError.call(this, replace);
+    };
+    MemoryStream.prototype.remember = function () {
+        return this;
+    };
+    MemoryStream.prototype.debug = function (labelOrSpy) {
+        return _super.prototype.debug.call(this, labelOrSpy);
+    };
+    return MemoryStream;
+}(Stream));
+exports.MemoryStream = MemoryStream;
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = Stream;
 
-},{"xstream":44}],27:[function(require,module,exports){
+},{"symbol-observable":22}],26:[function(require,module,exports){
 "use strict";
 var selectorParser_1 = require('./selectorParser');
 function classNameFromVNode(vNode) {
@@ -2392,7 +3666,7 @@ function classNameFromVNode(vNode) {
 }
 exports.classNameFromVNode = classNameFromVNode;
 
-},{"./selectorParser":28}],28:[function(require,module,exports){
+},{"./selectorParser":27}],27:[function(require,module,exports){
 "use strict";
 function selectorParser(_a) {
     var sel = _a.sel;
@@ -2413,7 +3687,7 @@ function selectorParser(_a) {
 }
 exports.selectorParser = selectorParser;
 
-},{}],29:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -2473,7 +3747,7 @@ exports.h = h;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = h;
 
-},{"./is":31,"./vnode":39}],30:[function(require,module,exports){
+},{"./is":30,"./vnode":38}],29:[function(require,module,exports){
 "use strict";
 function createElement(tagName) {
     return document.createElement(tagName);
@@ -2520,7 +3794,7 @@ exports.htmlDomApi = {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.htmlDomApi;
 
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 "use strict";
 exports.array = Array.isArray;
 function primitive(s) {
@@ -2528,7 +3802,7 @@ function primitive(s) {
 }
 exports.primitive = primitive;
 
-},{}],32:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 "use strict";
 var NamespaceURIs = {
     "xlink": "http://www.w3.org/1999/xlink"
@@ -2580,7 +3854,7 @@ exports.attributesModule = { create: updateAttrs, update: updateAttrs };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.attributesModule;
 
-},{}],33:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 "use strict";
 function updateClass(oldVnode, vnode) {
     var cur, name, elm = vnode.elm, oldClass = oldVnode.data.class, klass = vnode.data.class;
@@ -2606,7 +3880,7 @@ exports.classModule = { create: updateClass, update: updateClass };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.classModule;
 
-},{}],34:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 "use strict";
 function updateDataset(oldVnode, vnode) {
     var elm = vnode.elm, oldDataset = oldVnode.data.dataset, dataset = vnode.data.dataset, key;
@@ -2631,7 +3905,7 @@ exports.datasetModule = { create: updateDataset, update: updateDataset };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.datasetModule;
 
-},{}],35:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 function updateProps(oldVnode, vnode) {
     var key, cur, old, elm = vnode.elm, oldProps = oldVnode.data.props, props = vnode.data.props;
@@ -2658,7 +3932,7 @@ exports.propsModule = { create: updateProps, update: updateProps };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.propsModule;
 
-},{}],36:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 "use strict";
 var raf = (typeof window !== 'undefined' && window.requestAnimationFrame) || setTimeout;
 var nextFrame = function (fn) { raf(function () { raf(fn); }); };
@@ -2745,7 +4019,7 @@ exports.styleModule = {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.styleModule;
 
-},{}],37:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 "use strict";
 var vnode_1 = require("./vnode");
 var is = require("./is");
@@ -3031,7 +4305,7 @@ function init(modules, domApi) {
 }
 exports.init = init;
 
-},{"./h":29,"./htmldomapi":30,"./is":31,"./thunk":38,"./vnode":39}],38:[function(require,module,exports){
+},{"./h":28,"./htmldomapi":29,"./is":30,"./thunk":37,"./vnode":38}],37:[function(require,module,exports){
 "use strict";
 var h_1 = require("./h");
 function copyToThunk(vnode, thunk) {
@@ -3078,7 +4352,7 @@ exports.thunk = function thunk(sel, key, fn, args) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = exports.thunk;
 
-},{"./h":29}],39:[function(require,module,exports){
+},{"./h":28}],38:[function(require,module,exports){
 "use strict";
 function vnode(sel, data, children, text, elm) {
     var key = data === undefined ? undefined : data.key;
@@ -3089,195 +4363,19 @@ exports.vnode = vnode;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vnode;
 
-},{}],40:[function(require,module,exports){
-module.exports = require('./lib/index');
-
-},{"./lib/index":41}],41:[function(require,module,exports){
-(function (global){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _ponyfill = require('./ponyfill');
-
-var _ponyfill2 = _interopRequireDefault(_ponyfill);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
-
-var root; /* global window */
-
-
-if (typeof self !== 'undefined') {
-  root = self;
-} else if (typeof window !== 'undefined') {
-  root = window;
-} else if (typeof global !== 'undefined') {
-  root = global;
-} else if (typeof module !== 'undefined') {
-  root = module;
-} else {
-  root = Function('return this')();
-}
-
-var result = (0, _ponyfill2['default'])(root);
-exports['default'] = result;
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill":42}],42:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-	value: true
-});
-exports['default'] = symbolObservablePonyfill;
-function symbolObservablePonyfill(root) {
-	var result;
-	var _Symbol = root.Symbol;
-
-	if (typeof _Symbol === 'function') {
-		if (_Symbol.observable) {
-			result = _Symbol.observable;
-		} else {
-			result = _Symbol('observable');
-			_Symbol.observable = result;
-		}
-	} else {
-		result = '@@observable';
-	}
-
-	return result;
-};
-},{}],43:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 "use strict";
-var index_1 = require("../index");
-var empty = {};
-var DropRepeatsOperator = (function () {
-    function DropRepeatsOperator(ins, fn) {
-        this.ins = ins;
-        this.fn = fn;
-        this.type = 'dropRepeats';
-        this.out = null;
-        this.v = empty;
-    }
-    DropRepeatsOperator.prototype._start = function (out) {
-        this.out = out;
-        this.ins._add(this);
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
-    DropRepeatsOperator.prototype._stop = function () {
-        this.ins._remove(this);
-        this.out = null;
-        this.v = empty;
-    };
-    DropRepeatsOperator.prototype.isEq = function (x, y) {
-        return this.fn ? this.fn(x, y) : x === y;
-    };
-    DropRepeatsOperator.prototype._n = function (t) {
-        var u = this.out;
-        if (!u)
-            return;
-        var v = this.v;
-        if (v !== empty && this.isEq(t, v))
-            return;
-        this.v = t;
-        u._n(t);
-    };
-    DropRepeatsOperator.prototype._e = function (err) {
-        var u = this.out;
-        if (!u)
-            return;
-        u._e(err);
-    };
-    DropRepeatsOperator.prototype._c = function () {
-        var u = this.out;
-        if (!u)
-            return;
-        u._c();
-    };
-    return DropRepeatsOperator;
-}());
-exports.DropRepeatsOperator = DropRepeatsOperator;
-/**
- * Drops consecutive duplicate values in a stream.
- *
- * Marble diagram:
- *
- * ```text
- * --1--2--1--1--1--2--3--4--3--3|
- *     dropRepeats
- * --1--2--1--------2--3--4--3---|
- * ```
- *
- * Example:
- *
- * ```js
- * import dropRepeats from 'xstream/extra/dropRepeats'
- *
- * const stream = xs.of(1, 2, 1, 1, 1, 2, 3, 4, 3, 3)
- *   .compose(dropRepeats())
- *
- * stream.addListener({
- *   next: i => console.log(i),
- *   error: err => console.error(err),
- *   complete: () => console.log('completed')
- * })
- * ```
- *
- * ```text
- * > 1
- * > 2
- * > 1
- * > 2
- * > 3
- * > 4
- * > 3
- * > completed
- * ```
- *
- * Example with a custom isEqual function:
- *
- * ```js
- * import dropRepeats from 'xstream/extra/dropRepeats'
- *
- * const stream = xs.of('a', 'b', 'a', 'A', 'B', 'b')
- *   .compose(dropRepeats((x, y) => x.toLowerCase() === y.toLowerCase()))
- *
- * stream.addListener({
- *   next: i => console.log(i),
- *   error: err => console.error(err),
- *   complete: () => console.log('completed')
- * })
- * ```
- *
- * ```text
- * > a
- * > b
- * > a
- * > B
- * > completed
- * ```
- *
- * @param {Function} isEqual An optional function of type
- * `(x: T, y: T) => boolean` that takes an event from the input stream and
- * checks if it is equal to previous event, by returning a boolean.
- * @return {Stream}
- */
-function dropRepeats(isEqual) {
-    if (isEqual === void 0) { isEqual = void 0; }
-    return function dropRepeatsOperator(ins) {
-        return new index_1.Stream(new DropRepeatsOperator(ins, isEqual));
-    };
-}
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = dropRepeats;
-
-},{"../index":44}],44:[function(require,module,exports){
-"use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
 var symbol_observable_1 = require("symbol-observable");
 var NO = {};
 exports.NO = NO;
@@ -4803,7 +5901,7 @@ var Stream = (function () {
         return new (this.ctor())(new EndWhen(other, this));
     };
     /**
-     * We might need also some sample variant that returns Stream<[T, R]>
+     * TODO: We might need also some sample variant that returns Stream<[T, R]>
      * (T is from the Stream, R is from the Signal), but for now we have
      * just Stream<R> in order to avoid the array allocation, because this
      * code is critical in Cycle DOM when pulling the chain on every animation
@@ -5248,124 +6346,879 @@ var MemoryStream = (function (_super) {
     return MemoryStream;
 }(Stream));
 exports.MemoryStream = MemoryStream;
-Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Stream;
 
-},{"symbol-observable":40}],45:[function(require,module,exports){
+},{"symbol-observable":40}],40:[function(require,module,exports){
+arguments[4][22][0].apply(exports,arguments)
+},{"./lib/index":41,"dup":22}],41:[function(require,module,exports){
+arguments[4][23][0].apply(exports,arguments)
+},{"./ponyfill":42,"dup":23}],42:[function(require,module,exports){
+arguments[4][24][0].apply(exports,arguments)
+},{"dup":24}],43:[function(require,module,exports){
+arguments[4][20][0].apply(exports,arguments)
+},{"dup":20}],44:[function(require,module,exports){
+arguments[4][21][0].apply(exports,arguments)
+},{"./adapt":43,"dup":21,"xstream":48}],45:[function(require,module,exports){
+arguments[4][22][0].apply(exports,arguments)
+},{"./lib/index":46,"dup":22}],46:[function(require,module,exports){
+arguments[4][23][0].apply(exports,arguments)
+},{"./ponyfill":47,"dup":23}],47:[function(require,module,exports){
+arguments[4][24][0].apply(exports,arguments)
+},{"dup":24}],48:[function(require,module,exports){
+arguments[4][25][0].apply(exports,arguments)
+},{"dup":25,"symbol-observable":45}],49:[function(require,module,exports){
 "use strict";
-var Signal = (function () {
-    function Signal(iterable) {
-        this.iterable = iterable;
-        this.iterator = null;
+Object.defineProperty(exports, "__esModule", { value: true });
+var adapt_1 = require("@cycle/run/lib/adapt");
+var pickMerge_1 = require("./pickMerge");
+var pickCombine_1 = require("./pickCombine");
+var CollectionSource = (function () {
+    function CollectionSource(_ins$) {
+        this._ins$ = _ins$;
     }
-    Signal.prototype[Symbol.iterator] = function () {
-        return this.init();
+    /**
+     * Like `merge` in xstream, this operator blends multiple streams together, but
+     * picks those streams from a collection of component instances.
+     *
+     * Use the `selector` string to pick a stream from the sinks object of each
+     * component instance, then pickMerge will merge all those picked streams.
+     *
+     * @param {String} selector a name of a channel in a sinks object belonging to
+     * each component in the collection of components.
+     * @return {Function} an operator to be used with xstream's `compose` method.
+     */
+    CollectionSource.prototype.pickMerge = function (selector) {
+        return adapt_1.adapt(this._ins$.compose(pickMerge_1.pickMerge(selector)));
     };
-    Signal.create = function (iterable) {
-        return new Signal(iterable);
+    /**
+     * Like `combine` in xstream, this operator combines multiple streams together,
+     * but picks those streams from a collection of component instances.
+     *
+     * Use the `selector` string to pick a stream from the sinks object of each
+     * component instance, then pickCombine will combine all those picked streams.
+     *
+     * @param {String} selector a name of a channel in a sinks object belonging to
+     * each component in the collection of components.
+     * @return {Function} an operator to be used with xstream's `compose` method.
+     */
+    CollectionSource.prototype.pickCombine = function (selector) {
+        return adapt_1.adapt(this._ins$.compose(pickCombine_1.pickCombine(selector)));
     };
-    Signal.prototype.init = function () {
-        if (!this.iterator) {
-            this.iterator = this.iterable[Symbol.iterator]();
+    return CollectionSource;
+}());
+exports.CollectionSource = CollectionSource;
+
+},{"./pickCombine":53,"./pickMerge":54,"@cycle/run/lib/adapt":55}],50:[function(require,module,exports){
+"use strict";
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+function updateArrayEntry(array, scope, newVal) {
+    if (newVal === array[scope]) {
+        return array;
+    }
+    var index = parseInt(scope);
+    if (typeof newVal === 'undefined') {
+        return array.filter(function (val, i) { return i !== index; });
+    }
+    return array.map(function (val, i) { return (i === index ? newVal : val); });
+}
+function makeGetter(scope) {
+    if (typeof scope === 'string' || typeof scope === 'number') {
+        return function lensGet(state) {
+            if (typeof state === 'undefined') {
+                return void 0;
+            }
+            else {
+                return state[scope];
+            }
+        };
+    }
+    else {
+        return scope.get;
+    }
+}
+function makeSetter(scope) {
+    if (typeof scope === 'string' || typeof scope === 'number') {
+        return function lensSet(state, childState) {
+            if (Array.isArray(state)) {
+                return updateArrayEntry(state, scope, childState);
+            }
+            else if (typeof state === 'undefined') {
+                return _a = {}, _a[scope] = childState, _a;
+            }
+            else {
+                return __assign({}, state, (_b = {}, _b[scope] = childState, _b));
+            }
+            var _a, _b;
+        };
+    }
+    else {
+        return scope.set;
+    }
+}
+function isolateSource(source, scope) {
+    return source.select(scope);
+}
+exports.isolateSource = isolateSource;
+function isolateSink(innerReducer$, scope) {
+    var get = makeGetter(scope);
+    var set = makeSetter(scope);
+    return innerReducer$.map(function (innerReducer) {
+        return function outerReducer(outer) {
+            var prevInner = get(outer);
+            var nextInner = innerReducer(prevInner);
+            if (prevInner === nextInner) {
+                return outer;
+            }
+            else {
+                return set(outer, nextInner);
+            }
+        };
+    });
+}
+exports.isolateSink = isolateSink;
+function defaultGetKey(statePiece) {
+    return statePiece.key;
+}
+var identityLens = {
+    get: function (outer) { return outer; },
+    set: function (outer, inner) { return inner; },
+};
+function instanceLens(getKey, key) {
+    return {
+        get: function (arr) {
+            if (typeof arr === 'undefined') {
+                return void 0;
+            }
+            else {
+                for (var i = 0, n = arr.length; i < n; ++i) {
+                    if (getKey(arr[i]) === key) {
+                        return arr[i];
+                    }
+                }
+                return void 0;
+            }
+        },
+        set: function (arr, item) {
+            if (typeof arr === 'undefined') {
+                return [item];
+            }
+            else if (typeof item === 'undefined') {
+                return arr.filter(function (s) { return getKey(s) !== key; });
+            }
+            else {
+                return arr.map(function (s) {
+                    if (getKey(s) === key) {
+                        return item;
+                    }
+                    else {
+                        return s;
+                    }
+                });
+            }
+        },
+    };
+}
+var StateSource = (function () {
+    function StateSource(signal, name) {
+        /**
+         * Treats the state in this StateSource as a dynamic collection of many child
+         * components, returning a CollectionSource.
+         *
+         * Typically you use this function when the state$ emits arrays, and each
+         * entry in the array is an object holding the state for each child component.
+         * When the state array grows, the collection will automatically instantiate
+         * a new child component. Similarly, when the state array gets smaller, the
+         * collection will handle removal of the corresponding child component.
+         *
+         * This function returns a CollectionSource, which can be consumed with the
+         * operators `pickCombine` and `pickMerge` attached to it as methods.
+         *
+         * As arguments, you pass the child Cycle.js component function to use for
+         * each entry in the array, and the sources object to give to as input to each
+         * child component. Each entry in the array is expected to be an object with
+         * at least `key` as a property, which should uniquely identify that child. If
+         * these objects have a different unique identifier like `id`, you can tell
+         * that to `asCollection` in the third argument: a function that takes the
+         * child object state, and returns the unique identifier. By default, this
+         * third argument is the function `obj => obj.key`.
+         *
+         * @param {Function} itemComp a function that takes `sources` as input and
+         * returns `sinks`, representing the component to be used for each child in
+         * the collection.
+         * @param {Object} sources the object with sources to pass as input for each
+         * child component.
+         * @param getKey
+         * @return {CollectionSource}
+         */
+        // public asCollection<Si>(
+        //   itemComp: (so: any) => Si,
+        //   sources: any,
+        //   getKey: any = defaultGetKey,
+        // ): CollectionSource<Si> {
+        //   const arrayS = this.stateS;
+        //   const name = this._name;
+        //   const collectionS = arrayS.fold(
+        //     (acc: Instances<Si>, nextState: Array<any> | any) => {
+        //       const dict = acc.dict;
+        //       if (Array.isArray(nextState)) {
+        //         const nextInstArray = Array(nextState.length) as Array<
+        //           Si & {_key: string}
+        //         >;
+        //         const nextKeys = new Set<string>();
+        //         // add
+        //         for (let i = 0, n = nextState.length; i < n; ++i) {
+        //           const key = getKey(nextState[i]);
+        //           nextKeys.add(key);
+        //           if (dict.has(key)) {
+        //             nextInstArray[i] = dict.get(key) as any;
+        //           } else {
+        //             const scopes = {
+        //               '*': '$' + key,
+        //               [name]: instanceLens(getKey, key),
+        //             };
+        //             const sinks = isolate(itemComp, scopes)(sources);
+        //             dict.set(key, sinks);
+        //             nextInstArray[i] = sinks;
+        //           }
+        //           nextInstArray[i]._key = key;
+        //         }
+        //         // remove
+        //         dict.forEach((_, key) => {
+        //           if (!nextKeys.has(key)) {
+        //             dict.delete(key);
+        //           }
+        //         });
+        //         nextKeys.clear();
+        //         return {dict: dict, arr: nextInstArray};
+        //       } else {
+        //         dict.clear();
+        //         const key = getKey(nextState);
+        //         const scopes = {'*': '$' + key, [name]: identityLens};
+        //         const sinks = isolate(itemComp, scopes)(sources);
+        //         dict.set(key, sinks);
+        //         return {dict: dict, arr: [sinks]};
+        //       }
+        //     },
+        //     {dict: new Map(), arr: []} as Instances<Si>,
+        //   );
+        //   return new CollectionSource<Si>(collectionS);
+        // }
+        this.isolateSource = isolateSource;
+        this.isolateSink = isolateSink;
+        this.stateS = signal;
+        // .filter(s => typeof s !== 'undefined');
+        // .compose(dropRepeats())
+        // .remember();
+        this._name = name;
+        this.stateS._isCycleSource = name;
+    }
+    /**
+     * Selects a part (or scope) of the state object and returns a new StateSource
+     * dynamically representing that selected part of the state.
+     *
+     * @param {string|number|lens} scope as a string, this argument represents the
+     * property you want to select from the state object. As a number, this
+     * represents the array index you want to select from the state array. As a
+     * lens object (an object with get() and set()), this argument represents any
+     * custom way of selecting something from the state object.
+     */
+    StateSource.prototype.select = function (scope) {
+        var get = makeGetter(scope);
+        return new StateSource(this.stateS.map(get), this._name);
+    };
+    return StateSource;
+}());
+exports.StateSource = StateSource;
+
+},{}],51:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var onionify_1 = require("./onionify");
+var StateSource_1 = require("./StateSource");
+exports.StateSource = StateSource_1.StateSource;
+exports.isolateSource = StateSource_1.isolateSource;
+exports.isolateSink = StateSource_1.isolateSink;
+var CollectionSource_1 = require("./CollectionSource");
+exports.CollectionSource = CollectionSource_1.CollectionSource;
+/**
+ * Like `merge` in xstream, this operator blends multiple streams together, but
+ * picks those streams from a stream of instances.
+ *
+ * The instances data structure has a sinks object for each instance. Use the
+ * `selector` string to pick a stream from the sinks object of each instance,
+ * then pickMerge will merge all those picked streams.
+ *
+ * @param {String} selector a name of a channel in a sinks object belonging to
+ * each component in the collection of instances.
+ * @return {Function} an operator to be used with xstream's `compose` method.
+ */
+var pickMerge_1 = require("./pickMerge");
+exports.pickMerge = pickMerge_1.pickMerge;
+/**
+ * Like `combine` in xstream, this operator combines multiple streams together,
+ * but picks those streams from a stream of instances.
+ *
+ * The instances data structure has a sinks object for each instance. Use the
+ * `selector` string to pick a stream from the sinks object of each instance,
+ * then pickCombine will combine all those picked streams.
+ *
+ * @param {String} selector a name of a channel in a sinks object belonging to
+ * each component in the collection of instances.
+ * @return {Function} an operator to be used with xstream's `compose` method.
+ */
+var pickCombine_1 = require("./pickCombine");
+exports.pickCombine = pickCombine_1.pickCombine;
+/**
+ * Given a Cycle.js component that expects an onion state *source* and will
+ * output onion reducer *sink*, this function sets up the state management
+ * mechanics to accumulate state over time and provide the state source. It
+ * returns a Cycle.js component which wraps the component given as input.
+ * Essentially, it hooks up the onion sink with the onion source as a cycle.
+ *
+ * Optionally, you can pass a custom name for the onion channel. By default,
+ * the name is 'onion' in sources and sinks, but you can change that to be
+ * whatever string you wish.
+ *
+ * @param {Function} main a function that takes `sources` as input and outputs
+ * `sinks`.
+ * @param {String} name an optional string for the custom name given to the
+ * onion channel. By default, it is 'onion'.
+ * @return {Function} a component that wraps the main function given as input,
+ * adding state accumulation logic to it.
+ */
+exports.default = onionify_1.onionify;
+
+},{"./CollectionSource":49,"./StateSource":50,"./onionify":52,"./pickCombine":53,"./pickMerge":54}],52:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xstream_1 = require("xstream");
+var ysignal_1 = require("ysignal");
+var StateSource_1 = require("./StateSource");
+var FoldIterator = (function () {
+    function FoldIterator(seed, reducer$) {
+        this.seed = seed;
+        this.reducer$ = reducer$;
+        this.acc = seed;
+        this.done = false;
+        this.count = 0;
+        this.latestCount = -1;
+        var foldIterator = this;
+        this.subscription = reducer$.subscribe({
+            next: function (reducer) {
+                var next = reducer(foldIterator.acc);
+                if (typeof next !== 'undefined') {
+                    foldIterator.acc = next;
+                    foldIterator.count++;
+                }
+            },
+            error: function (e) { },
+            complete: function () {
+                foldIterator.done = true;
+                foldIterator.count++;
+            }
+        });
+    }
+    FoldIterator.prototype.next = function () {
+        if (this.latestCount >= 0 && this.latestCount === this.count) {
+            return this.latestRes;
         }
-        return this.iterator;
+        else {
+            this.latestCount = this.count;
+            this.latestRes = {
+                done: this.done,
+                value: this.done ? undefined : this.acc
+            };
+            return this.latestRes;
+        }
     };
-    Signal.from = function (getter) {
-        return Signal.create((_a = {},
+    FoldIterator.prototype.return = function () {
+        this.subscription.unsubscribe();
+        return { done: true, value: undefined };
+    };
+    return FoldIterator;
+}());
+function fold(seed, reducer$) {
+    return ysignal_1.default.create((_a = {},
+        _a[Symbol.iterator] = function () {
+            return new FoldIterator(seed, reducer$);
+        },
+        _a));
+    var _a;
+}
+function onionify(main, name) {
+    if (name === void 0) { name = 'onion'; }
+    return function mainOnionified(sources) {
+        var reducerMimic$ = xstream_1.default.create();
+        var stateS = ysignal_1.startWith(void 0)(reducerMimic$
+            .fold(function (state, reducer) { return reducer(state); }, void 0)
+            .drop(1));
+        sources[name] = new StateSource_1.StateSource(stateS, name);
+        var sinks = main(sources);
+        if (sinks[name]) {
+            reducerMimic$.imitate(xstream_1.default.fromObservable(sinks[name]));
+        }
+        return sinks;
+    };
+}
+exports.onionify = onionify;
+
+},{"./StateSource":50,"xstream":56,"ysignal":60}],53:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xstream_1 = require("xstream");
+var PickCombineListener = (function () {
+    function PickCombineListener(key, out, p, ins) {
+        this.key = key;
+        this.out = out;
+        this.p = p;
+        this.val = xstream_1.NO;
+        this.ins = ins;
+    }
+    PickCombineListener.prototype._n = function (t) {
+        var p = this.p, out = this.out;
+        this.val = t;
+        if (out === null) {
+            return;
+        }
+        this.p.up();
+    };
+    PickCombineListener.prototype._e = function (err) {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._e(err);
+    };
+    PickCombineListener.prototype._c = function () {
+    };
+    return PickCombineListener;
+}());
+var PickCombine = (function () {
+    function PickCombine(sel, ins) {
+        this.type = 'combine';
+        this.ins = ins;
+        this.sel = sel;
+        this.out = null;
+        this.ils = new Map();
+        this.inst = null;
+    }
+    PickCombine.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    PickCombine.prototype._stop = function () {
+        var ils = this.ils;
+        ils.forEach(function (il) {
+            il.ins._remove(il);
+            il.ins = null;
+            il.out = null;
+            il.val = null;
+        });
+        ils.clear();
+        this.out = null;
+        this.ils = new Map();
+        this.inst = null;
+    };
+    PickCombine.prototype.up = function () {
+        var arr = this.inst.arr;
+        var n = arr.length;
+        var ils = this.ils;
+        var outArr = Array(n);
+        for (var i = 0; i < n; ++i) {
+            var sinks = arr[i];
+            var key = sinks._key;
+            if (!ils.has(key)) {
+                return;
+            }
+            var val = ils.get(key).val;
+            if (val === xstream_1.NO) {
+                return;
+            }
+            outArr[i] = val;
+        }
+        this.out._n(outArr);
+    };
+    PickCombine.prototype._n = function (inst) {
+        this.inst = inst;
+        var arrSinks = inst.arr;
+        var ils = this.ils;
+        var out = this.out;
+        var sel = this.sel;
+        var dict = inst.dict;
+        var n = arrSinks.length;
+        // remove
+        var removed = false;
+        ils.forEach(function (il, key) {
+            if (!dict.has(key)) {
+                il.ins._remove(il);
+                il.ins = null;
+                il.out = null;
+                il.val = null;
+                ils.delete(key);
+                removed = true;
+            }
+        });
+        if (n === 0) {
+            out._n([]);
+            return;
+        }
+        // add
+        var added = false;
+        for (var i = 0; i < n; ++i) {
+            var sinks = arrSinks[i];
+            var key = sinks._key;
+            var sink = sinks[sel];
+            if (!ils.has(key)) {
+                ils.set(key, new PickCombineListener(key, out, this, sink));
+                added = true;
+            }
+        }
+        if (added) {
+            for (var i = 0; i < n; ++i) {
+                var sinks = arrSinks[i];
+                var key = sinks._key;
+                var sink = sinks[sel];
+                if (sink._ils.length === 0) {
+                    sink._add(ils.get(key));
+                }
+            }
+        }
+        if (removed) {
+            this.up();
+        }
+    };
+    PickCombine.prototype._e = function (e) {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._e(e);
+    };
+    PickCombine.prototype._c = function () {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._c();
+    };
+    return PickCombine;
+}());
+function pickCombine(selector) {
+    return function pickCombineOperator(inst$) {
+        return new xstream_1.Stream(new PickCombine(selector, inst$));
+    };
+}
+exports.pickCombine = pickCombine;
+
+},{"xstream":56}],54:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var xstream_1 = require("xstream");
+var PickMergeListener = (function () {
+    function PickMergeListener(out, p, ins) {
+        this.ins = ins;
+        this.out = out;
+        this.p = p;
+    }
+    PickMergeListener.prototype._n = function (t) {
+        var p = this.p, out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._n(t);
+    };
+    PickMergeListener.prototype._e = function (err) {
+        var out = this.out;
+        if (out === null) {
+            return;
+        }
+        out._e(err);
+    };
+    PickMergeListener.prototype._c = function () {
+    };
+    return PickMergeListener;
+}());
+var PickMerge = (function () {
+    function PickMerge(sel, ins) {
+        this.type = 'pickMerge';
+        this.ins = ins;
+        this.out = null;
+        this.sel = sel;
+        this.ils = new Map();
+        this.inst = null;
+    }
+    PickMerge.prototype._start = function (out) {
+        this.out = out;
+        this.ins._add(this);
+    };
+    PickMerge.prototype._stop = function () {
+        var ils = this.ils;
+        ils.forEach(function (il, key) {
+            il.ins._remove(il);
+            il.ins = null;
+            il.out = null;
+            ils.delete(key);
+        });
+        ils.clear();
+        this.out = null;
+        this.ils = new Map();
+        this.inst = null;
+    };
+    PickMerge.prototype._n = function (inst) {
+        this.inst = inst;
+        var arrSinks = inst.arr;
+        var ils = this.ils;
+        var out = this.out;
+        var sel = this.sel;
+        var n = arrSinks.length;
+        // add
+        for (var i = 0; i < n; ++i) {
+            var sinks = arrSinks[i];
+            var key = sinks._key;
+            var sink = sinks[sel];
+            if (!ils.has(key)) {
+                ils.set(key, new PickMergeListener(out, this, sink));
+            }
+        }
+        for (var i = 0; i < n; ++i) {
+            var sinks = arrSinks[i];
+            var key = sinks._key;
+            var sink = sinks[sel];
+            if (sink._ils.length === 0) {
+                sink._add(ils.get(key));
+            }
+        }
+        // remove
+        ils.forEach(function (il, key) {
+            if (!inst.dict.has(key) || !inst.dict.get(key)) {
+                il.ins._remove(il);
+                il.ins = null;
+                il.out = null;
+                ils.delete(key);
+            }
+        });
+    };
+    PickMerge.prototype._e = function (err) {
+        var u = this.out;
+        if (u === null)
+            return;
+        u._e(err);
+    };
+    PickMerge.prototype._c = function () {
+        var u = this.out;
+        if (u === null)
+            return;
+        u._c();
+    };
+    return PickMerge;
+}());
+function pickMerge(selector) {
+    return function pickMergeOperator(inst$) {
+        return new xstream_1.Stream(new PickMerge(selector, inst$));
+    };
+}
+exports.pickMerge = pickMerge;
+
+},{"xstream":56}],55:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var adaptStream = function (x) { return x; };
+function setAdapt(f) {
+    adaptStream = f;
+}
+exports.setAdapt = setAdapt;
+function adapt(stream) {
+    return adaptStream(stream);
+}
+exports.adapt = adapt;
+
+},{}],56:[function(require,module,exports){
+arguments[4][39][0].apply(exports,arguments)
+},{"dup":39,"symbol-observable":57}],57:[function(require,module,exports){
+arguments[4][22][0].apply(exports,arguments)
+},{"./lib/index":58,"dup":22}],58:[function(require,module,exports){
+arguments[4][23][0].apply(exports,arguments)
+},{"./ponyfill":59,"dup":23}],59:[function(require,module,exports){
+arguments[4][24][0].apply(exports,arguments)
+},{"dup":24}],60:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+//+++++++++++++++++ Signal creators +++++++++++++++++++++++++++++++++++++//
+function create(iterable) {
+    return new Signal(iterable);
+}
+exports.create = create;
+function from(getter) {
+    return create((_a = {},
+        _a[Symbol.iterator] = function () {
+            var last = undefined;
+            var count = 0;
+            return {
+                next: function () {
+                    var current = getter();
+                    if (current !== last) {
+                        count++;
+                    }
+                    last = current;
+                    return { value: current, done: false, count: count };
+                }
+            };
+        },
+        _a));
+    var _a;
+}
+exports.from = from;
+function constant(val) {
+    return from(function () { return val; });
+}
+exports.constant = constant;
+exports.combine = function combine() {
+    var signals = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        signals[_i] = arguments[_i];
+    }
+    return create((_a = {},
+        _a[Symbol.iterator] = function () {
+            var inIters = signals.map(function (ins) { return ins.init(); });
+            var lastInIterCounts = signals.map(function (_) { return -1; });
+            var lasts = signals.map(function (_) { return undefined; });
+            var count = 0;
+            return {
+                next: function () {
+                    inIters.forEach(function (iter, i) {
+                        var t = iter.next();
+                        if (lastInIterCounts[i] !== t.count && !t.done) {
+                            count++;
+                            lasts[i] = t.value;
+                            lastInIterCounts[i] = t.count;
+                        }
+                    });
+                    return { value: lasts, done: false, count: count };
+                }
+            };
+        },
+        _a));
+    var _a;
+};
+function startWith(seed) {
+    return function (stream) {
+        return create((_a = {},
             _a[Symbol.iterator] = function () {
+                var value = seed;
+                var subscription = stream.subscribe({
+                    next: function (t) {
+                        value = t;
+                    }
+                });
+                var lastValue = undefined;
+                var count = 0;
+                var last = { value: value, done: false, count: count };
                 return {
                     next: function () {
-                        return { value: getter(), done: false };
+                        if (lastValue !== value) {
+                            count++;
+                            last = { value: value, done: false, count: count };
+                            lastValue = value;
+                        }
+                        return last;
                     }
                 };
             },
             _a));
         var _a;
     };
-    Signal.constant = function (val) {
-        return Signal.from(function () { return val; });
-    };
-    // public take(amount: number): Signal<T> {
-    // }
-    // public sampleCombine<R>(stream: Stream<R>): Stream<[T, R]> {
-    //   return stream.map(x => [this._pull(), x] as [T, R]);
-    // }
-    Signal.prototype.map = function (project) {
-        var ins = this;
-        return Signal.create((_a = {},
+}
+exports.startWith = startWith;
+function map(project) {
+    return function (ins) {
+        return create((_a = {},
             _a[Symbol.iterator] = function () {
                 var inIter = ins.init();
-                var latestCount = -1;
-                var latestR;
+                var lastInIterCount = -1;
+                var count = 0;
+                var last = { value: undefined, done: false, count: count };
                 return {
                     next: function () {
+                        if (last.done) {
+                            return last;
+                        }
                         var t = inIter.next();
-                        if (latestCount >= 0 &&
-                            latestCount === inIter.count) {
-                            return latestR;
+                        if (t.done) {
+                            count++;
+                            last = { value: undefined, done: true };
+                        }
+                        else if (lastInIterCount !== t.count) {
+                            count++;
+                            console.log("Update");
+                            last = { value: project(t.value), done: false, count: count };
+                            lastInIterCount = t.count;
+                        }
+                        return last;
+                    }
+                };
+            },
+            _a));
+        var _a;
+    };
+}
+exports.map = map;
+function fold(project, seed) {
+    return function (ins) {
+        return create((_a = {},
+            _a[Symbol.iterator] = function () {
+                var inIter = ins.init();
+                var lastInIterCount = -1;
+                var count = 0;
+                var last = { value: undefined, done: false, count: count };
+                return {
+                    next: function () {
+                        if (last.done) {
+                            return last;
+                        }
+                        if (last.value === undefined) {
+                            last = { value: seed, done: false, count: count };
                         }
                         else {
-                            latestR = t.done
-                                ? t
-                                : { done: false, value: project(t.value) };
-                            latestCount =
-                                inIter.count || latestCount;
-                            this.count = latestCount;
-                            return latestR;
+                            var t = inIter.next();
+                            if (t.done) {
+                                last = { value: undefined, done: true };
+                            }
+                            else if (lastInIterCount !== t.count) {
+                                count++;
+                                last = { value: project(last.value, t.value), done: false, count: count };
+                                lastInIterCount = t.count;
+                            }
                         }
+                        return last;
                     }
                 };
             },
             _a));
         var _a;
     };
-    Signal.prototype.fold = function (accumulate, seed) {
-        var ins = this;
-        return Signal.create((_a = {},
+}
+exports.fold = fold;
+function drop(amount) {
+    return function (ins) {
+        return create((_a = {},
             _a[Symbol.iterator] = function () {
                 var inIter = ins.init();
-                var sentSeed = false;
-                var acc = seed;
-                var latestCount = -1;
-                var latestR;
+                var dropped = false;
                 return {
                     next: function () {
-                        if (!sentSeed) {
-                            sentSeed = true;
-                            return { done: false, value: seed };
-                        }
-                        var t = inIter.next();
-                        if (latestCount >= 0 &&
-                            latestCount === inIter.count) {
-                            return latestR;
-                        }
-                        else {
-                            latestR = t.done
-                                ? t
-                                : { done: false, value: accumulate(acc, t.value) };
-                            acc = latestR.value;
-                            latestCount =
-                                inIter.count || latestCount;
-                            this.count = latestCount;
-                            return latestR;
-                        }
-                    }
-                };
-            },
-            _a));
-        var _a;
-    };
-    Signal.prototype.startWith = function (seed) {
-        var ins = this;
-        return Signal.create((_a = {},
-            _a[Symbol.iterator] = function () {
-                var inIter = ins.init();
-                var sentSeed = false;
-                return {
-                    next: function () {
-                        if (!sentSeed) {
-                            sentSeed = true;
-                            return { done: false, value: seed };
+                        if (!dropped) {
+                            for (var i = 0; i < amount; i++) {
+                                inIter.next();
+                            }
+                            dropped = true;
                         }
                         return inIter.next();
                     }
@@ -5374,103 +7227,54 @@ var Signal = (function () {
             _a));
         var _a;
     };
+}
+exports.drop = drop;
+// function take<T>(amount: number): Transformer<T,T> {
+// }
+var Signal = (function () {
+    function Signal(iterable) {
+        this.iterable = iterable;
+        this.iterator = null;
+    }
+    Signal.prototype[Symbol.iterator] = function () {
+        return this.init();
+    };
+    Signal.prototype.init = function () {
+        if (!this.iterator) {
+            this.iterator = this.iterable[Symbol.iterator]();
+        }
+        return this.iterator;
+    };
     Signal.prototype.compose = function (operator) {
         return operator(this);
     };
-    Signal.prototype.filter = function (predicate, max) {
-        if (max === void 0) { max = 1000; }
-        var ins = this;
-        return Signal.create((_a = {},
-            _a[Symbol.iterator] = function () {
-                var inIter = ins.init();
-                return {
-                    next: function () {
-                        for (var i = 0; i < max; i++) {
-                            var t = inIter.next();
-                            if (t.done) {
-                                return t;
-                            }
-                            if (predicate(t.value)) {
-                                return t;
-                            }
-                        }
-                        return { done: true, value: undefined };
-                    }
-                };
-            },
-            _a));
-        var _a;
+    Signal.prototype.map = function (project) {
+        return this.compose(map(project));
+    };
+    Signal.prototype.fold = function (project, seed) {
+        return this.compose(fold(project, seed));
     };
     Signal.prototype.drop = function (amount) {
-        var ins = this;
-        return Signal.create((_a = {},
-            _a[Symbol.iterator] = function () {
-                var inIter = ins.init();
-                var dropped = 0;
-                var latestCount = -1;
-                var latestT;
-                return {
-                    next: function () {
-                        while (dropped < amount) {
-                            var t_1 = inIter.next();
-                            dropped += 1;
-                            if (t_1.done) {
-                                return t_1;
-                            }
-                        }
-                        var t = inIter.next();
-                        if (latestCount >= 0 &&
-                            latestCount === inIter.count) {
-                            return latestT;
-                        }
-                        else {
-                            latestT = t;
-                            latestCount =
-                                inIter.count || latestCount;
-                            this.count = latestCount;
-                            return latestT;
-                        }
-                    }
-                };
-            },
-            _a));
-        var _a;
+        return this.compose(drop(amount));
     };
     return Signal;
 }());
-Signal.combine = function combine() {
-    var signals = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        signals[_i] = arguments[_i];
-    }
-    return new Signal((_a = {},
-        _a[Symbol.iterator] = function () {
-            var iters = signals.map(function (s) { return s.init(); });
-            var latestCounts = signals.map(function () { return -1; });
-            var latestVals = signals.map(function () { return void 0; });
-            return {
-                next: function () {
-                    var results = iters.map(function (iter, i) {
-                        var returnable = latestCounts[i] ===
-                            iter.count
-                            ? latestVals[i]
-                            : iter.next();
-                        latestCounts[i] = iter.count;
-                        latestVals[i] = returnable;
-                        return returnable;
-                    });
-                    if (results.some(function (r) { return r.done; })) {
-                        return { done: true, value: undefined };
-                    }
-                    else {
-                        return { done: false, value: results.map(function (r) { return r.value; }) };
-                    }
-                }
-            };
-        },
-        _a));
-    var _a;
-};
 exports.Signal = Signal;
+exports.default = {
+    create: create,
+    from: from,
+    constant: constant,
+    combine: exports.combine
+};
 
-},{}]},{},[1]);
+},{}],61:[function(require,module,exports){
+arguments[4][39][0].apply(exports,arguments)
+},{"dup":39,"symbol-observable":62}],62:[function(require,module,exports){
+arguments[4][22][0].apply(exports,arguments)
+},{"./lib/index":63,"dup":22}],63:[function(require,module,exports){
+arguments[4][23][0].apply(exports,arguments)
+},{"./ponyfill":64,"dup":23}],64:[function(require,module,exports){
+arguments[4][24][0].apply(exports,arguments)
+},{"dup":24}],65:[function(require,module,exports){
+arguments[4][60][0].apply(exports,arguments)
+},{"dup":60}]},{},[1]);
