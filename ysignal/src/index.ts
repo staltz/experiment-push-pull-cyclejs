@@ -1,67 +1,180 @@
-export type Getter<T> = () => T;
+import {CombineSignature} from './signatures';
 
-export interface CombineSignature {
-  (): Signal<Array<any>>;
-  <T1>(s1: Signal<T1>): Signal<[T1]>;
-  <T1, T2>(s1: Signal<T1>, s2: Signal<T2>): Signal<[T1, T2]>;
-  <T1, T2, T3>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<T3>): Signal<
-    [T1, T2, T3]
-  >;
-  <T1, T2, T3, T4>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<T3>, s4: Signal<
-    T4
-  >): Signal<[T1, T2, T3, T4]>;
-  <T1, T2, T3, T4, T5>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
-    T3
-  >, s4: Signal<T4>, s5: Signal<T5>): Signal<[T1, T2, T3, T4, T5]>;
-  <T1, T2, T3, T4, T5, T6>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
-    T3
-  >, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>): Signal<
-    [T1, T2, T3, T4, T5, T6]
-  >;
-  <T1, T2, T3, T4, T5, T6, T7>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
-    T3
-  >, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<T7>): Signal<
-    [T1, T2, T3, T4, T5, T6, T7]
-  >;
-  <T1, T2, T3, T4, T5, T6, T7, T8>(s1: Signal<T1>, s2: Signal<T2>, s3: Signal<
-    T3
-  >, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<T7>, s8: Signal<
-    T8
-  >): Signal<[T1, T2, T3, T4, T5, T6, T7, T8]>;
-  <T1, T2, T3, T4, T5, T6, T7, T8, T9>(s1: Signal<T1>, s2: Signal<
-    T2
-  >, s3: Signal<T3>, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<
-    T7
-  >, s8: Signal<T8>, s9: Signal<T9>): Signal<
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9]
-  >;
-  <T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(s1: Signal<T1>, s2: Signal<
-    T2
-  >, s3: Signal<T3>, s4: Signal<T4>, s5: Signal<T5>, s6: Signal<T6>, s7: Signal<
-    T7
-  >, s8: Signal<T8>, s9: Signal<T9>, s10: Signal<T10>): Signal<
-    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]
-  >;
-  (...signals: Array<Signal<any>>): Signal<Array<any>>;
+export type Getter<T> = () => T;
+export type UpdateCountIteratorResult<T> = IteratorResult<T> & {count: number};
+
+//+++++++++++++++++ Signal creators +++++++++++++++++++++++++++++++++++++//
+export function create<T>(iterable: Iterable<T>): Signal<T> {
+  return new Signal<T>(iterable);
 }
 
-export type UpdateCountIterator<T> = Iterator<T> & {count: number};
+export function from<T>(getter: Getter<T>): Signal<T> {
+  return create<T>({
+    [Symbol.iterator](): Iterator<T> {
+      let last: any = undefined;
+      let count = 0;
+      return {
+        next(): UpdateCountIteratorResult<T> {
+          let current = getter();
+          if(current !== last) {
+            count++;
+          }
+          last = current;
+          return { value: current, done: false, count };
+        }
+      };
+    }
+  });
+}
+
+export function constant<T>(val: T): Signal<T> {
+  return from<T>(() => val);
+}
+
+export const combine: CombineSignature = function combine(
+  ...signals: Array<Signal<any>>
+): Signal<any[]> {
+  return create<any[]>({
+    [Symbol.iterator](): Iterator<any[]> {
+      const inIters = signals.map(ins => ins.init());
+      let lastInIterCounts: number[] = signals.map(_ => -1);
+      let lasts: any[] = signals.map(_ => undefined);
+      let count = 0;
+      return {
+        next(): UpdateCountIteratorResult<any[]> {
+          inIters.forEach((iter, i) => {
+            const t = iter.next() as UpdateCountIteratorResult<any>;
+            if(lastInIterCounts[i] !== t.count && !t.done) {
+              count++;
+              lasts[i] = t.value;
+              lastInIterCounts[i] = t.count;
+            }
+          });
+          return { value: lasts, done: false, count };
+        }
+      }
+    }
+  });
+} as CombineSignature
+
+export function startWith<T>(seed: T): (s: any) => Signal<T> {
+  return stream => create<T>({
+    [Symbol.iterator](): Iterator<T> {
+      let value = seed;
+      const subscription = stream.subscribe({
+        next: (t: T) => {
+          value = t;
+        }
+      });
+      let lastValue: any = undefined;
+      let count = 0;
+      let last: UpdateCountIteratorResult<T> = { value, done: false, count } as any;
+      return {
+        next(): UpdateCountIteratorResult<T> {
+          if (lastValue !== value) {
+            count++;
+            last = { value , done: false, count };
+            lastValue = value;
+          }
+          return last;
+        }
+      };
+    }
+  });
+}
+
+//+++++++++++++++++ Signal transformer +++++++++++++++++++++++++++++++++++//
+export type Transformer<T, R> = (s: Signal<T>) => Signal<R>;
+
+export function map<T, R>(project: (x: T) => R): Transformer<T, R> {
+  return ins => create<R>({
+    [Symbol.iterator](): Iterator<R> {
+      const inIter = ins.init();
+      let lastInIterCount: number = -1;
+      let count = 0;
+      let last: UpdateCountIteratorResult<R> = { value: undefined, done: false, count } as any;
+      return {
+        next(): UpdateCountIteratorResult<R> {
+          if(last.done) { return last; }
+          const t = inIter.next() as UpdateCountIteratorResult<T>;
+          if(t.done) {
+            count++;
+            last = { value: undefined, done: true } as any;
+          }
+          else if (lastInIterCount !== t.count) {
+            count++;
+            console.log("Update");
+            last = { value: project(t.value), done: false, count };
+            lastInIterCount = t.count;
+          }
+          return last;
+        }
+      };
+    }
+  });
+}
+
+export function fold<T, R>(project: (acc: R, x: T) => R, seed: R): Transformer<T, R> {
+  return ins => create<R>({
+    [Symbol.iterator](): Iterator<R> {
+      const inIter = ins.init();
+      let lastInIterCount: number = -1;
+      let count = 0;
+      let last: UpdateCountIteratorResult<R> = { value: undefined, done: false, count } as any;
+      return {
+        next(): UpdateCountIteratorResult<R> {
+          if (last.done) { return last; }
+          if(last.value === undefined) {
+            last = { value: seed, done: false, count };
+          }
+          else {
+            const t = inIter.next() as UpdateCountIteratorResult<T>;
+            if(t.done) {
+              last = { value: undefined, done: true } as any;
+            }
+            else if (lastInIterCount !== t.count) {
+              count++;
+              last = { value: project(last.value, t.value), done: false, count };
+              lastInIterCount = t.count;
+            }
+          }
+          return last;
+        }
+      };
+    }
+  });
+}
+
+export function drop<T>(amount: number): Transformer<T, T> {
+  return ins => create<T>({
+    [Symbol.iterator](): Iterator<T> {
+      const inIter = ins.init();
+      let dropped = false;
+      return {
+        next(): UpdateCountIteratorResult<T> {
+          if(!dropped) {
+            for(let i = 0; i < amount; i++) {
+              inIter.next();
+            }
+            dropped = true;
+          }
+          return inIter.next() as UpdateCountIteratorResult<T>;
+        }
+      }
+    }
+  });
+}
+
+// function take<T>(amount: number): Transformer<T,T> {
+// }
 
 export class Signal<T> implements Iterable<T> {
-  constructor(iterable: Iterable<T>) {
-    this.iterable = iterable;
-    this.iterator = null;
-  }
+  private iterator: Iterator<T> | null = null;
 
-  private iterable: Iterable<T>;
-  private iterator: Iterator<T> | null;
+  constructor(private iterable: Iterable<T>) {}
 
   public [Symbol.iterator](): Iterator<T> {
     return this.init();
-  }
-
-  public static create<T>(iterable: Iterable<T>): Signal<T> {
-    return new Signal<T>(iterable);
   }
 
   public init(): Iterator<T> {
@@ -71,207 +184,26 @@ export class Signal<T> implements Iterable<T> {
     return this.iterator;
   }
 
-  public static from<T>(getter: Getter<T>): Signal<T> {
-    return Signal.create<T>({
-      [Symbol.iterator](): Iterator<T> {
-        return {
-          next(): IteratorResult<T> {
-            return {value: getter(), done: false};
-          }
-        };
-      }
-    });
-  }
-
-  public static constant<T>(val: T): Signal<T> {
-    return Signal.from<T>(() => val);
-  }
-
-  public static combine: CombineSignature = function combine(
-    ...signals: Array<Signal<any>>
-  ) {
-    return new Signal<Array<any>>({
-      [Symbol.iterator](): Iterator<Array<any>> {
-        const iters = signals.map(s => s.init());
-        const latestCounts = signals.map(() => -1);
-        const latestVals: Array<IteratorResult<any> | undefined> = signals.map(
-          () => void 0
-        );
-        return {
-          next(): IteratorResult<Array<any>> {
-            const results = iters.map((iter, i) => {
-              const returnable = latestCounts[i] ===
-                (iter as UpdateCountIterator<any>).count
-                ? latestVals[i] as IteratorResult<any>
-                : iter.next();
-              latestCounts[i] = (iter as UpdateCountIterator<any>).count;
-              latestVals[i] = returnable;
-              return returnable;
-            });
-            if (results.some(r => r.done)) {
-              return {done: true, value: undefined as any};
-            } else {
-              return {done: false, value: results.map(r => r.value)};
-            }
-          }
-        };
-      }
-    });
-  } as CombineSignature;
-
-  // public take(amount: number): Signal<T> {
-  // }
-
-  // public sampleCombine<R>(stream: Stream<R>): Stream<[T, R]> {
-  //   return stream.map(x => [this._pull(), x] as [T, R]);
-  // }
-
-  public map<R>(project: (x: T) => R): Signal<R> {
-    const ins = this;
-    return Signal.create<R>({
-      [Symbol.iterator](): Iterator<R> {
-        const inIter = ins.init();
-        let latestCount: number = -1;
-        let latestR: IteratorResult<R> | undefined;
-        return {
-          next: function(): IteratorResult<R> {
-            const t = inIter.next();
-            if (
-              latestCount >= 0 &&
-              latestCount === (inIter as UpdateCountIterator<T>).count
-            ) {
-              return latestR as IteratorResult<R>;
-            } else {
-              latestR = t.done
-                ? t as any
-                : {done: false, value: project(t.value)};
-              latestCount =
-                (inIter as UpdateCountIterator<T>).count || latestCount;
-              this.count = latestCount;
-              return latestR as IteratorResult<R>;
-            }
-          }
-        };
-      }
-    });
-  }
-
-  public fold<R>(accumulate: (acc: R, x: T) => R, seed: R): Signal<R> {
-    const ins = this;
-    return Signal.create<R>({
-      [Symbol.iterator](): Iterator<R> {
-        const inIter = ins.init();
-        let sentSeed = false;
-        let acc: R = seed;
-        let latestCount: number = -1;
-        let latestR: IteratorResult<R> | undefined;
-        return {
-          next(): IteratorResult<R> {
-            if (!sentSeed) {
-              sentSeed = true;
-              return {done: false, value: seed};
-            }
-            const t = inIter.next();
-            if (
-              latestCount >= 0 &&
-              latestCount === (inIter as UpdateCountIterator<T>).count
-            ) {
-              return latestR as IteratorResult<R>;
-            } else {
-              latestR = t.done
-                ? t as any
-                : {done: false, value: accumulate(acc, t.value)};
-              acc = (latestR as IteratorResult<R>).value;
-              latestCount =
-                (inIter as UpdateCountIterator<T>).count || latestCount;
-              this.count = latestCount;
-              return latestR as IteratorResult<R>;
-            }
-          }
-        };
-      }
-    });
-  }
-
-  public startWith(seed: T): Signal<T> {
-    const ins = this;
-    return Signal.create<T>({
-      [Symbol.iterator](): Iterator<T> {
-        const inIter = ins.init();
-        let sentSeed = false;
-        return {
-          next(): IteratorResult<T> {
-            if (!sentSeed) {
-              sentSeed = true;
-              return {done: false, value: seed};
-            }
-            return inIter.next();
-          }
-        };
-      }
-    });
-  }
-
-  public compose<U>(operator: (signal: Signal<T>) => Signal<U>): Signal<U> {
+  public compose<U>(operator: Transformer<T, U>): Signal<U> {
     return operator(this);
   }
 
-  public filter(predicate: (t: T) => boolean, max: number = 1000): Signal<T> {
-    const ins = this;
-    return Signal.create<T>({
-      [Symbol.iterator](): Iterator<T> {
-        const inIter = ins.init();
-        return {
-          next(): IteratorResult<T> {
-            for (let i = 0; i < max; i++) {
-              const t = inIter.next();
-              if (t.done) {
-                return t;
-              }
-              if (predicate(t.value)) {
-                return t;
-              }
-            }
-            return {done: true, value: undefined as any};
-          }
-        };
-      }
-    });
+  public map<R>(project: (t: T) => R): Signal<R> {
+    return this.compose(map<T, R>(project));
+  }
+
+  public fold<R>(project: (acc: R, t: T) => R, seed: R): Signal<R> {
+    return this.compose(fold<T, R>(project, seed));
   }
 
   public drop(amount: number): Signal<T> {
-    const ins = this;
-    return Signal.create<T>({
-      [Symbol.iterator](): Iterator<T> {
-        const inIter = ins.init();
-        let dropped = 0;
-        let latestCount: number = -1;
-        let latestT: IteratorResult<T> | undefined;
-        return {
-          next(): IteratorResult<T> {
-            while (dropped < amount) {
-              const t = inIter.next();
-              dropped += 1;
-              if (t.done) {
-                return t;
-              }
-            }
-            const t = inIter.next();
-            if (
-              latestCount >= 0 &&
-              latestCount === (inIter as UpdateCountIterator<T>).count
-            ) {
-              return latestT as IteratorResult<T>;
-            } else {
-              latestT = t;
-              latestCount =
-                (inIter as UpdateCountIterator<T>).count || latestCount;
-              this.count = latestCount;
-              return latestT as IteratorResult<T>;
-            }
-          }
-        };
-      }
-    });
+    return this.compose(drop<T>(amount));
   }
 }
+
+export default {
+  create,
+  from,
+  constant,
+  combine
+};
