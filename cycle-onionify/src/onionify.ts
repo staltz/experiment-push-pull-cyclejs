@@ -1,5 +1,5 @@
 import xs, {Stream, Subscription} from 'xstream';
-import {Signal} from 'ysignal';
+import ys, {Signal, startWith}  from 'ysignal';
 import {MainFn, Reducer} from './types';
 import {StateSource} from './StateSource';
 
@@ -57,7 +57,7 @@ class FoldIterator<T> implements Iterator<T | undefined> {
 }
 
 function fold<T>(seed: T, reducer$: Stream<Reducer<T>>): Signal<T | undefined> {
-  return Signal.create<T | undefined>({
+  return ys.create<T | undefined>({
     [Symbol.iterator](): Iterator<T | undefined> {
       return new FoldIterator(seed, reducer$);
     }
@@ -103,9 +103,10 @@ export function onionify<T, So extends OSo<T>, Si extends OSi<T>>(
     sources: Omit<So, 'onion'>
   ): Omit<Si, 'onion'> {
     const reducerMimic$ = xs.create<Reducer<T>>();
-    const stateS = fold(void 0, reducerMimic$);
-    // .fold((state, reducer) => reducer(state), void 0 as (T | undefined))
-    // .drop(1);
+      const stateS =  startWith(void 0)(reducerMimic$
+        .fold((state, reducer) => reducer(state), void 0 as (T | undefined))
+        .drop(1));
+
     sources[name] = new StateSource<any>(stateS, name);
     const sinks = main(sources as So);
     if (sinks[name]) {

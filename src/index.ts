@@ -1,5 +1,5 @@
-import {Stream} from 'xstream';
-import {Signal} from 'ysignal';
+import xs, {Stream} from 'xstream';
+import ys, {Signal} from 'ysignal';
 import {run} from '@cycle/run';
 import onionify, {StateSource, Reducer} from 'cycle-onionify';
 import {div, button, makeDOMDriver, VNode, DOMSource} from '@cycle/dom';
@@ -30,29 +30,29 @@ function main(sources: Sources): Sinks {
     };
   });
 
-  const initialReducer$ = Stream.of(function initialReducer(): State {
+  const initialReducer$ = xs.of(function initialReducer(_: State): State {
     return {count: 0};
   });
 
-  const reducer$ = Stream.merge(initialReducer$, incrementReducer$);
+  const reducer$: any = xs.merge(initialReducer$, incrementReducer$ as any).debug('test');
 
-  // const vdomS = Signal.combine(
-  //   sources.state.stateS,
-  //   sources.windowHeight
-  // ).map(([state, height]) =>
-  //   div('.container', [
-  //     div('.height', 'Height: ' + height),
-  //     button('.foo', 'Count: ' + state.count),
-  //     div('.not', 'Not this')
-  //   ])
-  // );
+  const vdomS = ys.combine(
+    sources.state.stateS as any,
+    sources.windowHeight
+  ).map(([state, height]) =>
+    div('.container', [
+      div('.height', 'Height: ' + height),
+      button('.foo', 'Count: ' + (state as any).count),
+      div('.not', 'Not this')
+    ])
+  );
 
-  const vdomS = sources.state.stateS.map(state =>
+/*  const vdomS = sources.state.stateS.map(state =>
     div('.container', [
       button('.foo', 'Count: ' + state.count),
       div('.not', 'Not this')
     ])
-  );
+  );*/
 
   return {
     DOM: vdomS,
@@ -61,6 +61,6 @@ function main(sources: Sources): Sinks {
 }
 
 run(onionify<any, any, any>(main, 'state'), {
-  windowHeight: () => Signal.from(() => window.outerHeight),
+  windowHeight: () => ys.from(() => window.outerHeight),
   DOM: makeDOMDriver('#main-container')
 });

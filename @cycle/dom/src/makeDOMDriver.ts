@@ -2,7 +2,7 @@ import {Driver, PushPullProxy} from '@cycle/run';
 import {init} from 'snabbdom';
 import {Module} from 'snabbdom/modules/module';
 import {Stream} from 'xstream';
-import {Signal} from 'ysignal';
+import ys, {Signal} from 'ysignal';
 import {DOMSource} from './DOMSource';
 import {MainDOMSource} from './MainDOMSource';
 import {VNode} from 'snabbdom/vnode';
@@ -57,14 +57,14 @@ function makeDOMDriver(
   makeDOMDriverInputGuard(modules);
 
   function DOMDriver(vnodeProxy: Iterable<VNode>, name = 'DOM'): DOMSource {
-    const vnodeS = Signal.create(vnodeProxy);
+    const vnodeS = ys.create(vnodeProxy);
     domDriverInputGuard(vnodeS);
     const rootElementS = vnodeS
       .map(vnode => vnodeWrapper.call(vnode))
       .fold<VNode | Element>(patch, rootElement)
       .drop(1)
       .map(unwrapElementFromVNode)
-      .startWith(rootElement);
+      .fold(x => x, rootElement);
 
     const rootElementProxyS = new PushPullProxy<Element>();
     const iter: Iterator<Element> = rootElementProxyS[Symbol.iterator]();
